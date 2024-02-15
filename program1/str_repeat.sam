@@ -1,0 +1,88 @@
+DUP
+ISNEG
+JUMPC HANDLENEGATIVE
+CONTINUE:
+    SWAP
+    LINK
+    PUSHOFF -1
+
+    // string -> len
+    LINK
+    PUSHIMM 0
+    LOOP1:
+        DUP
+        PUSHOFF -1
+        ADD
+        PUSHIND
+        ISNIL
+        JUMPC DONE1
+        PUSHIMM 1
+        ADD
+        JUMP LOOP1
+        HANDLENEGATIVE:
+            ISPOS
+            JUMP CONTINUE
+    DONE1:
+        STOREOFF -1
+        UNLINK
+
+    PUSHOFF -2
+    TIMES
+    DUP
+    PUSHIMM 1
+    ADD
+    MALLOC
+    SWAP
+    PUSHOFF 1
+    ADD
+    PUSHIMMCH '\0'
+    STOREIND
+    PUSHIMM 0
+    PUSHOFF -2
+    PUSHOFF -1
+    BIGLOOP:
+        PUSHIMM 0
+        PUSHOFF 3
+        CMP
+        PUSHIMM 1
+        EQUAL
+        NOT
+        JUMPC DONE
+
+        // write string to allocated space
+        LINK
+        PUSHIMM 0
+        LOOP3:
+            PUSHOFF -1
+            PUSHOFF 1
+            ADD
+            PUSHIND
+            DUP
+            ISNIL
+            JUMPC DONE3
+            PUSHOFF -4
+            PUSHOFF -3
+            ADD
+            SWAP
+            STOREIND
+            PUSHIMM 1
+            ADD
+            PUSHOFF -3
+            PUSHIMM 1
+            ADD
+            STOREOFF -3
+            JUMP LOOP3
+        DONE3:
+            ADDSP -2
+            PUSHOFF -2
+            PUSHIMM 1
+            SUB
+            STOREOFF -2
+            UNLINK
+            JUMP BIGLOOP
+    DONE:
+        PUSHOFF 1
+        STOREOFF -2
+        ADDSP -4
+        UNLINK
+        ADDSP -1
