@@ -7,9 +7,7 @@ import edu.utexas.cs.sam.io.Tokenizer.TokenType;
 import java.io.IOException;
 
 public class LiveOak2Compiler {
-	public static void main(String[] args) throws IOException {
-
-	}
+	public static void main(String[] args) throws IOException {}
 
 	static String compiler(String fileName) {
 		//returns SaM code for program in file
