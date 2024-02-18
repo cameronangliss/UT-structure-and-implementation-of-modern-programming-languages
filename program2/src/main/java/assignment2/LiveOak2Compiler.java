@@ -6,14 +6,12 @@ import edu.utexas.cs.sam.io.Tokenizer.TokenType;
 
 import java.io.IOException;
 
-public class LiveOak2Compiler
-{
+public class LiveOak2Compiler {
 	public static void main(String[] args) throws IOException {
 
 	}
 
-	static String compiler(String fileName) 
-	{
+	static String compiler(String fileName) {
 		//returns SaM code for program in file
 		try 
 		{
@@ -28,14 +26,13 @@ public class LiveOak2Compiler
 		}
 	}
 
-	static String getProgram(SamTokenizer f)
-	{
+	static String getProgram(SamTokenizer f) {
 		try
 		{
 			String pgm="";
 			while(f.peekAtKind()!=TokenType.EOF)
 			{
-				pgm+= getMethod(f);
+				pgm += getMethod(f);
 			}
 			return pgm;
 		}
@@ -45,8 +42,8 @@ public class LiveOak2Compiler
 			return "STOP\n";
 		}		
 	}
-	static String getMethod(SamTokenizer f)
-	{
+
+	static String getMethod(SamTokenizer f) {
 		//TODO: add code to convert a method declaration to SaM code.
 		//TODO: add appropriate exception handlers to generate useful error msgs.
 		f.check("int"); //must match at begining
@@ -59,8 +56,7 @@ public class LiveOak2Compiler
 		return null;
 	}
 
-	static String getExp(SamTokenizer f) 
-	{
+	static String getExp(SamTokenizer f) {
 			  switch (f.peekAtKind()) {
 				 case INTEGER: //E -> integer
 					return "PUSHIMM " + f.getInt() + "\n";
@@ -71,7 +67,7 @@ public class LiveOak2Compiler
 			  }
 	}
 
-	static String getFormals(SamTokenizer f){
+	static String getFormals(SamTokenizer f) {
 			return null;
 	}
 }
