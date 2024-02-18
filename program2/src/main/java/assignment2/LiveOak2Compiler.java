@@ -1,7 +1,6 @@
 package assignment2;
 
 import edu.utexas.cs.sam.io.SamTokenizer;
-import edu.utexas.cs.sam.io.Tokenizer;
 import edu.utexas.cs.sam.io.Tokenizer.TokenType;
 
 import java.io.IOException;
@@ -34,15 +33,16 @@ public class LiveOak2Compiler {
 	}
 
 	static String getMethod(SamTokenizer f) {
-		//TODO: add code to convert a method declaration to SaM code.
-		//TODO: add appropriate exception handlers to generate useful error msgs.
-		f.check("int"); //must match at begining
+		// TODO: add code to convert a method declaration to SaM code.
+		// TODO: add appropriate exception handlers to generate useful error msgs.
+		f.check("int"); // must match at beginning
 		String methodName = f.getString(); 
-		f.check ("("); // must be an opening parenthesis
+		f.check ("(");
 		String formals = getFormals(f);
-		f.check(")");  // must be an closing parenthesis
-		//You would need to read in formals if any
-		//And then have calls to getDeclarations and getStatements.
+		f.check(")");
+		f.check("{");
+		// compile method body
+		f.check("}");
 		return null;
 	}
 
