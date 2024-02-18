@@ -11,31 +11,23 @@ public class LiveOak2Compiler {
 
 	static String compiler(String fileName) {
 		//returns SaM code for program in file
-		try 
-		{
+		try {
 			SamTokenizer f = new SamTokenizer(fileName, SamTokenizer.TokenizerOptions.PROCESS_STRINGS);
 			String pgm = getProgram(f);
 			return pgm;
-		} 
-		catch (Exception e) 
-		{
+		} catch (Exception e) {
 			System.out.println("Fatal error: could not compile program");
 			return "STOP\n";
 		}
 	}
 
 	static String getProgram(SamTokenizer f) {
-		try
-		{
+		try {
 			String pgm="";
 			while(f.peekAtKind()!=TokenType.EOF)
-			{
 				pgm += getMethod(f);
-			}
 			return pgm;
-		}
-		catch(Exception e)
-		{
+		} catch(Exception e) {
 			System.out.println("Fatal error: could not compile program");
 			return "STOP\n";
 		}		
@@ -55,17 +47,18 @@ public class LiveOak2Compiler {
 	}
 
 	static String getExp(SamTokenizer f) {
-			  switch (f.peekAtKind()) {
-				 case INTEGER: //E -> integer
-					return "PUSHIMM " + f.getInt() + "\n";
-				 case OPERATOR:  
-				 {
-				 }
-				 default:   return "ERROR\n";
-			  }
+		switch (f.peekAtKind()) {
+			case INTEGER: //E -> integer
+				return "PUSHIMM " + f.getInt() + "\n";
+			case OPERATOR:  
+			{
+			}
+			default:
+				return "ERROR\n";
+		}
 	}
 
 	static String getFormals(SamTokenizer f) {
-			return null;
+		return null;
 	}
 }
