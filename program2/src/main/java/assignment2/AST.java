@@ -15,7 +15,7 @@ public class AST {
         this.rightChild = null;
     }
 
-    public void parse(SamTokenizer f) {
+    public void parse(SamTokenizer f) throws Exception {
         while(true) {
             switch (f.peekAtKind()) {
                 case INTEGER:
@@ -33,10 +33,14 @@ public class AST {
                 case COMMENT:
                     break;
                 case EOF:
-                    return;
+                    throw new Exception();
             }
-            throw new Error();
+            f.skipToken();
         }
+    }
+
+    public String generateProgram() {
+        return null;
     }
 }
 
