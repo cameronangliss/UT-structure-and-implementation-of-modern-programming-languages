@@ -3,19 +3,33 @@ package assignment2;
 import edu.utexas.cs.sam.io.SamTokenizer;
 
 public class AST {
+    private String fileName;
     private String value;
     private Label label;
     private AST leftChild;
     private AST rightChild;
 
-    public AST() {
+    public AST(String fileName) {
+        this.fileName = fileName;
         this.value = "";
         this.label = Label.PRGM;
         this.leftChild = null;
         this.rightChild = null;
     }
 
-    public void parse(SamTokenizer f) throws Exception {
+    public String compile() {
+        try {
+            SamTokenizer tokenizer = new SamTokenizer(fileName, SamTokenizer.TokenizerOptions.PROCESS_STRINGS);
+            this.parse(tokenizer);
+            String samCode = this.generateSamCode();
+            return samCode;
+        } catch (Exception e) {
+            System.err.println("Failed to compile " + fileName);
+			throw new Error();
+        }
+    }
+
+    private void parse(SamTokenizer f) throws Exception {
         while(true) {
             switch (f.peekAtKind()) {
                 case INTEGER:
@@ -39,7 +53,7 @@ public class AST {
         }
     }
 
-    public String generateProgram() {
+    public String generateSamCode() {
         return null;
     }
 }
