@@ -20,7 +20,7 @@ public class AST {
     public String compile() {
         try {
             SamTokenizer tokenizer = new SamTokenizer(fileName, SamTokenizer.TokenizerOptions.PROCESS_STRINGS);
-            this.parse(tokenizer);
+            this.parseProgram(tokenizer);
             String samCode = this.generateSamCode();
             return samCode;
         } catch (Exception e) {
@@ -29,7 +29,7 @@ public class AST {
         }
     }
 
-    private void parse(SamTokenizer f) throws Exception {
+    private void parseProgram(SamTokenizer f) throws Exception {
         while(true) {
             switch (f.peekAtKind()) {
                 case INTEGER:
