@@ -5,8 +5,6 @@ import edu.utexas.cs.sam.io.Tokenizer.TokenType;
 
 import java.io.IOException;
 
-import assignment2.AST;
-
 public class LiveOak2Compiler {
 	public static void main(String[] args) throws IOException {}
 
