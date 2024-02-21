@@ -6,7 +6,7 @@ import edu.utexas.cs.sam.io.SamTokenizer;
 import edu.utexas.cs.sam.io.Tokenizer.TokenType;
 
 public class AST {
-    private Node root;
+    public Node root;
     private Node current;
 
     public AST() {

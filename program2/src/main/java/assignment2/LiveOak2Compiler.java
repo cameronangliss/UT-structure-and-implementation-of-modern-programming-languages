@@ -12,15 +12,12 @@ public class LiveOak2Compiler {
             SamTokenizer tokenizer = new SamTokenizer(fileName, SamTokenizer.TokenizerOptions.PROCESS_STRINGS);
 			AST ast = new AST();
             ast.topDownParse(tokenizer);
-            String samCode = generateSamCode(ast);
+			SamCoder coder = new SamCoder();
+            String samCode = coder.generateSamCode(ast);
             return samCode;
         } catch (Exception e) {
             System.err.println("Failed to compile " + fileName);
 			throw new Error();
         }
-	}
-
-	static String generateSamCode(AST ast) {
-		return null;
 	}
 }
