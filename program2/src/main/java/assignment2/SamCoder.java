@@ -59,7 +59,31 @@ class SamCoder {
 	}
 
 	private String generateSamEXPR(Node exprNode) {
-		return null;
+        String exprStr = "";
+		switch (exprNode.children.size()) {
+            case 1:
+                Node child = exprNode.children.get(0);
+                if (child.label == Label.EXPR) {
+                    exprStr.concat(generateSamEXPR(child));
+                } else if (child.label == Label.VAR) {
+                    exprStr.concat(generateSamVAR(child));
+                } else if (child.label == Label.LIT) {
+                    exprStr.concat(generateSamLIT(child));
+                } else {
+                    throw new Error();
+                }
+            case 2:
+                exprStr.concat(generateSamEXPR(exprNode.children.get(1)));
+                exprStr.concat(generateSamUNOP(exprNode.children.get(0)));
+            case 3:
+                exprStr.concat(generateSamEXPR(exprNode.children.get(0)));
+                exprStr.concat(generateSamEXPR(exprNode.children.get(2)));
+                exprStr.concat(generateSamBINOP(exprNode.children.get(1)));
+                break;
+            default:
+                throw new Error();
+        }
+        return exprStr;
 	}
 
 	private String generateSamBINOP(Node binopNode) {
