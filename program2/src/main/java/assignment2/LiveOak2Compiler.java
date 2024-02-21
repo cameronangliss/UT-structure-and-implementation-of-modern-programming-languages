@@ -10,8 +10,8 @@ public class LiveOak2Compiler {
 	static String compiler(String fileName) {
 		try {
             SamTokenizer tokenizer = new SamTokenizer(fileName, SamTokenizer.TokenizerOptions.PROCESS_STRINGS);
-			AST ast = new AST();
-            ast.topDownParse(tokenizer);
+			AST ast = new AST(tokenizer);
+            ast.topDownParse();
 			SamCoder coder = new SamCoder();
             String samCode = coder.generateSamCode(ast);
             return samCode;
