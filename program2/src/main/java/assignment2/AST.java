@@ -1,5 +1,6 @@
 package assignment2;
 
+import java.util.List;
 import java.util.ArrayList;
 
 import edu.utexas.cs.sam.io.SamTokenizer;
@@ -141,6 +142,9 @@ public class AST {
                     this.parseIDENT();
                     this.current = prevCurrent;
                 }
+                if (this.tokenizer.getCharacter() != ';') {
+                    throw new Exception();
+                }
                 break;
             case COMMENT:
                 this.tokenizer.skipToken();
@@ -213,8 +217,93 @@ public class AST {
     private void parseEXPR() throws Exception {
         switch (this.tokenizer.peekAtKind()) {
             case CHARACTER:
+                // (EXPR BINOP EXPR) | (UNOP EXPR) | (EXPR)
                 if (this.tokenizer.getCharacter() != '(')
                     throw new Exception();
+                // Looking ahead to determine which type of EXPR it is
+                int i = 0;
+                while (this.tokenizer.peekAtKind() != TokenType.CHARACTER) {
+                    tokenizer.skipToken();
+                    i++;
+                }
+                String exprType;
+                char foundChar = this.tokenizer.getCharacter();
+                i++;
+                if ("+-*/%&|<>=".contains(Character.toString(foundChar))) {
+                    exprType = "BINOP";
+                } else if ("~!".contains(Character.toString(foundChar))) {
+                    exprType = "UNOP";
+                } else if (foundChar == ')') {
+                    exprType = "PAREN";
+                } else {
+                    throw new Exception();
+                }
+                // Look-ahead finished, now backing the tokenizer up to parse the EXPR
+                while (i > 0) {
+                    this.tokenizer.pushBack();
+                    i--;
+                }
+                if (exprType == "BINOP") {  // (EXPR BINOP EXPR)
+                    // EXPR
+                    Node exprNode = this.current.addChild(null, Label.EXPR);
+                    Node prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                    // BINOP
+                    Node binopNode = this.current.addChild(null, Label.BINOP);
+                    prevCurrent = this.swapOutCurrent(binopNode);
+                    this.parseBINOP();
+                    this.current = prevCurrent;
+                    // EXPR
+                    exprNode = this.current.addChild(null, Label.EXPR);
+                    prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                } else if (exprType == "UNOP") {  // (UNOP EXPR)
+                    // UNOP
+                    Node unop = this.current.addChild(null, Label.UNOP);
+                    Node prevCurrent = this.swapOutCurrent(unop);
+                    this.parseUNOP();
+                    this.current = prevCurrent;
+                    // EXPR
+                    Node exprNode = this.current.addChild(null, Label.EXPR);
+                    prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                } else if (exprType == "PAREN") {  // (EXPR)
+                    // EXPR
+                    Node exprNode = this.current.addChild(null, Label.EXPR);
+                    Node prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                }
+                if (this.tokenizer.getCharacter() != ')') {
+                    throw new Exception();
+                }
+                break;
+            case INTEGER:
+            case STRING:
+                // LITERAL
+                Node litNode = this.current.addChild(null, Label.LIT);
+                Node prevCurrent = this.swapOutCurrent(litNode);
+                this.parseLIT();
+                this.current = prevCurrent;
+                break;
+            case WORD:
+                // VAR | LITERAL
+                String token = this.tokenizer.getWord();
+                this.tokenizer.pushBack();
+                if (token == "true" || token == "false") {
+                    litNode = this.current.addChild(null, Label.LIT);
+                    prevCurrent = this.swapOutCurrent(litNode);
+                    this.parseLIT();
+                    this.current = prevCurrent;
+                } else {
+                    Node varNode = this.current.addChild(null, Label.VAR);
+                    prevCurrent = this.swapOutCurrent(varNode);
+                    this.parseLIT();
+                    this.current = prevCurrent;
+                }
                 break;
             case COMMENT:
                 this.tokenizer.skipToken();
@@ -259,7 +348,41 @@ public class AST {
     }
 
     private void parseFORMALS() throws Exception {
-
+        switch (this.tokenizer.peekAtKind()) {
+            case WORD:
+                // TYPE
+                Node typeNode = this.current.addChild(null, Label.TYPE);
+                Node prevCurrent = this.swapOutCurrent(typeNode);
+                this.parseTYPE();
+                this.current = prevCurrent;
+                // IDENT
+                Node identNode = this.current.addChild(null, Label.IDENT);
+                prevCurrent = this.swapOutCurrent(identNode);
+                this.parseIDENT();
+                this.current = prevCurrent;
+                // (, TYPE IDENTIFIER)*
+                while (this.tokenizer.peekAtKind() == TokenType.CHARACTER) {
+                    if (this.tokenizer.getCharacter() != ',') {
+                        throw new Exception();
+                    }
+                    // TYPE
+                    typeNode = this.current.addChild(null, Label.TYPE);
+                    prevCurrent = this.swapOutCurrent(typeNode);
+                    this.parseTYPE();
+                    this.current = prevCurrent;
+                    // IDENT
+                    identNode = this.current.addChild(null, Label.IDENT);
+                    prevCurrent = this.swapOutCurrent(identNode);
+                    this.parseIDENT();
+                    this.current = prevCurrent;
+                }
+                break;
+            case COMMENT:
+                this.tokenizer.skipToken();
+                break;
+            default:
+                throw new Exception();
+        }
     }
 
     private void parseACTUALS() throws Exception {
@@ -285,14 +408,18 @@ public class AST {
 
     private void parseMETHOD() throws Exception {
         // IDENT
-        this.current.label = Label.IDENT;
+        Node identNode = this.current.addChild(null, Label.IDENT);
+        Node prevCurrent = this.swapOutCurrent(identNode);
         this.parseIDENT();
+        this.current = prevCurrent;
     }
 
     private void parseVAR() throws Exception {
         // IDENT
-        this.current.label = Label.IDENT;
+        Node identNode = this.current.addChild(null, Label.IDENT);
+        Node prevCurrent = this.swapOutCurrent(identNode);
         this.parseIDENT();
+        this.current = prevCurrent;
     }
 
     private void parseLIT() throws Exception {
@@ -382,7 +509,7 @@ public class AST {
 class Node {
     public String value;
     public Label label;
-    public ArrayList<Node> children;
+    public List<Node> children;
 
     public Node(String value, Label label) {
         this.value = value;
