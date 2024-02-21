@@ -290,19 +290,40 @@ public class AST {
                 this.current = prevCurrent;
                 break;
             case WORD:
-                // VAR | LITERAL
+                // VAR | LITERAL | METHOD (ACTUALS?)
                 String token = this.tokenizer.getWord();
-                this.tokenizer.pushBack();
-                if (token == "true" || token == "false") {
-                    litNode = this.current.addChild(null, Label.LIT);
-                    prevCurrent = this.swapOutCurrent(litNode);
-                    this.parseLIT();
+                if (this.tokenizer.peekAtKind() == TokenType.CHARACTER && this.tokenizer.getCharacter() == '(') {  // METHOD (ACTUALS?)
+                    this.tokenizer.pushBack();
+                    this.tokenizer.pushBack();
+                    // METHOD
+                    Node methodNode = this.current.addChild(null, Label.METHOD);
+                    prevCurrent = this.swapOutCurrent(methodNode);
+                    this.parseMETHOD();
                     this.current = prevCurrent;
+                    // (ACTUALS?)
+                    if (this.tokenizer.getCharacter() != '(') {
+                        throw new Exception();
+                    }
+                    Node actualsNode = this.current.addChild(null, Label.ACTUALS);
+                    prevCurrent = this.swapOutCurrent(actualsNode);
+                    this.parseACTUALS();
+                    this.current = prevCurrent;
+                    if (this.tokenizer.getCharacter() != ')') {
+                        throw new Exception();
+                    }
                 } else {
-                    Node varNode = this.current.addChild(null, Label.VAR);
-                    prevCurrent = this.swapOutCurrent(varNode);
-                    this.parseLIT();
-                    this.current = prevCurrent;
+                    this.tokenizer.pushBack();
+                    if (token == "true" || token == "false") {
+                        litNode = this.current.addChild(null, Label.LIT);
+                        prevCurrent = this.swapOutCurrent(litNode);
+                        this.parseLIT();
+                        this.current = prevCurrent;
+                    } else {
+                        Node varNode = this.current.addChild(null, Label.VAR);
+                        prevCurrent = this.swapOutCurrent(varNode);
+                        this.parseLIT();
+                        this.current = prevCurrent;
+                    }
                 }
                 break;
             case COMMENT:
@@ -386,7 +407,31 @@ public class AST {
     }
 
     private void parseACTUALS() throws Exception {
-
+        switch (this.tokenizer.peekAtKind()) {
+            case WORD:
+                // EXPR
+                Node exprNode = this.current.addChild(null, Label.EXPR);
+                Node prevCurrent = this.swapOutCurrent(exprNode);
+                this.parseEXPR();
+                this.current = prevCurrent;
+                // (, EXPR)*
+                while (this.tokenizer.peekAtKind() == TokenType.CHARACTER) {
+                    if (this.tokenizer.getCharacter() != ',') {
+                        throw new Exception();
+                    }
+                    // EXPR
+                    exprNode = this.current.addChild(null, Label.EXPR);
+                    prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                }
+                break;
+            case COMMENT:
+                this.tokenizer.skipToken();
+                break;
+            default:
+                throw new Exception();
+        }
     }
 
     private void parseTYPE() throws Exception {
