@@ -21,7 +21,12 @@ class SamCoder {
 	}
 
 	private String generateSamBODY(Node bodyNode) {
-		return null;
+        String bodyStr = "";
+        for (int i = 0; i < bodyNode.children.size() - 1; i++) {
+            bodyStr.concat(generateSamVARDECL(bodyNode.children.get(i)));
+        }
+        bodyStr.concat(generateSamBLOCK(bodyNode.children.get(bodyNode.children.size() - 1)));
+        return bodyStr;
 	}
 
 	private String generateSamVARDECL(Node varDeclNode) {
