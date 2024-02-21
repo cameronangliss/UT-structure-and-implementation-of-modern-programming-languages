@@ -84,7 +84,7 @@ public class AST {
                 if (this.tokenizer.getCharacter() != '(') {
                     throw new Exception();
                 }
-                if (this.tokenizer.peekAtKind() == TokenType.STRING) {
+                if (this.tokenizer.peekAtKind() == TokenType.WORD) {
                     Node formalsNode = this.current.addChild(null, Label.FORMALS);
                     prevCurrent = this.swapOutCurrent(formalsNode);
                     this.parseFORMALS();
@@ -187,7 +187,7 @@ public class AST {
                 }
                 break;
             // VAR = EXPR;
-            case STRING:
+            case WORD:
                 // VAR
                 Node varNode = this.current.addChild(null, Label.VAR);
                 Node prevCurrent = this.swapOutCurrent(varNode);
@@ -477,11 +477,15 @@ public class AST {
                 this.current = prevCurrent;
                 break;
             case STRING:
-                // true | false | STRING
+                // STRING
                 Node stringNode = this.current.addChild(null, Label.STRING);
                 prevCurrent = this.swapOutCurrent(stringNode);
                 this.parseSTRING();
                 this.current = prevCurrent;
+                break;
+            case WORD:
+                // true | false
+                this.current.value = this.tokenizer.getWord();
                 break;
             case COMMENT:
                 this.tokenizer.skipToken();
@@ -529,9 +533,9 @@ public class AST {
 
     private void parseIDENT() throws Exception {
         switch (this.tokenizer.peekAtKind()) {
-            case STRING:
+            case WORD:
                 // [a-zA-Z]
-                String ident = this.tokenizer.getString();
+                String ident = this.tokenizer.getWord();
                 if (ident.isBlank() || !"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(ident.substring(0, 1))) {
                     throw new Exception();
                 }
