@@ -17,10 +17,25 @@ class SamCoder {
 	}
 
 	private String generateSamPRGM(Node prgmNode) {
-		return generateSamBODY(prgmNode.children.get(0));
+        String prgmStr = "";
+        for (Node child : prgmNode.children) {
+            prgmStr.concat(generateSamMETHODDECL(child));
+        }
+        return prgmStr;
 	}
 
-	private String generateSamBODY(Node bodyNode) {
+    private String generateSamMETHODDECL(Node methodDeclNode) {
+        String methodDeclStr = "";
+        methodDeclStr.concat(generateSamTYPE(methodDeclNode.children.get(0)));
+        methodDeclStr.concat(generateSamMETHOD(methodDeclNode.children.get(1)));
+        if (methodDeclNode.children.get(2).label == Label.FORMALS) {
+            methodDeclStr.concat(generateSamFORMALS(methodDeclNode.children.get(2)));
+        }
+        methodDeclStr.concat(generateSamBODY(methodDeclNode.children.get(methodDeclNode.children.size() - 1)));
+        return methodDeclStr;
+    }
+
+    private String generateSamBODY(Node bodyNode) {
         String bodyStr = "";
         for (int i = 0; i < bodyNode.children.size() - 1; i++) {
             bodyStr.concat(generateSamVARDECL(bodyNode.children.get(i)));
@@ -29,7 +44,7 @@ class SamCoder {
         return bodyStr;
 	}
 
-	private String generateSamVARDECL(Node varDeclNode) {
+    private String generateSamVARDECL(Node varDeclNode) {
 		String varDeclStr = "";
 		varDeclStr.concat(generateSamTYPE(varDeclNode.children.get(0)));
 		for (int i = 1; i < varDeclNode.children.size(); i++) {
@@ -65,7 +80,9 @@ class SamCoder {
 
 	private String generateSamEXPR(Node exprNode) {
         String exprStr = "";
-		switch (exprNode.children.size()) {
+        if (exprNode.children.get(0).label == Label.METHOD) {
+
+        } else switch (exprNode.children.size()) {
             case 1:
                 Node child = exprNode.children.get(0);
                 if (child.label == Label.EXPR) {
@@ -129,9 +146,29 @@ class SamCoder {
 		}
 	}
 
+    private String generateSamFORMALS(Node formalsNode) {
+        String formalsStr = "";
+        for (int i = 1; i < formalsNode.children.size(); i += 2) {
+            formalsStr.concat(generateSamIDENT(formalsNode.children.get(i)));
+        }
+        return formalsStr;
+    }
+
+    private String generateSamACTUALS(Node actualsNode) {
+        return null;
+    }
+
 	private String generateSamTYPE(Node typeNode) {
 		return "";
 	}
+
+    private String generateSamMETHOD(Node methodNode) {
+        String methodStr = "";
+        methodStr.concat("LINK");
+        methodStr.concat("JSR " + methodNode.value);
+        methodStr.concat("UNLINK");
+        return methodStr;
+    }
 
 	private String generateSamVAR(Node varNode) {
 		return generateSamIDENT(varNode.children.get(0));
