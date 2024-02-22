@@ -108,6 +108,13 @@ public class AST {
                 parseBLOCK();
                 this.current = prevCurrent;
                 break;
+            case OPERATOR:
+                // BLOCK
+                blockNode = this.current.addChild(null, Label.BLOCK);
+                prevCurrent = this.swapOutCurrent(blockNode);
+                parseBLOCK();
+                this.current = prevCurrent;
+                break;
             case COMMENT:
                 this.tokenizer.skipToken();
                 break;
@@ -230,29 +237,7 @@ public class AST {
                 // (EXPR BINOP EXPR) | (UNOP EXPR) | (EXPR)
                 if (this.tokenizer.getOp() != '(')
                     throw new Exception();
-                // Looking ahead to determine which type of EXPR it is
-                int i = 0;
-                while (this.tokenizer.peekAtKind() != TokenType.OPERATOR) {
-                    tokenizer.skipToken();
-                    i++;
-                }
-                String exprType;
-                char foundChar = this.tokenizer.getOp();
-                i++;
-                if ("+-*/%&|<>=".contains(Character.toString(foundChar))) {
-                    exprType = "BINOP";
-                } else if ("~!".contains(Character.toString(foundChar))) {
-                    exprType = "UNOP";
-                } else if (foundChar == ')') {
-                    exprType = "PAREN";
-                } else {
-                    throw new Exception();
-                }
-                // Look-ahead finished, now backing the tokenizer up to parse the EXPR
-                while (i > 0) {
-                    this.tokenizer.pushBack();
-                    i--;
-                }
+                String exprType = this.identifyParenExpr();
                 if (exprType == "BINOP") {  // (EXPR BINOP EXPR)
                     // EXPR
                     Node exprNode = this.current.addChild(null, Label.EXPR);
@@ -315,14 +300,14 @@ public class AST {
                     this.parseMETHOD();
                     this.current = prevCurrent;
                     // (ACTUALS?)
-                    if (this.tokenizer.getCharacter() != '(') {
+                    if (this.tokenizer.getOp() != '(') {
                         throw new Exception();
                     }
                     Node actualsNode = this.current.addChild(null, Label.ACTUALS);
                     prevCurrent = this.swapOutCurrent(actualsNode);
                     this.parseACTUALS();
                     this.current = prevCurrent;
-                    if (this.tokenizer.getCharacter() != ')') {
+                    if (this.tokenizer.getOp() != ')') {
                         throw new Exception();
                     }
                 } else {
@@ -347,6 +332,47 @@ public class AST {
             default:
                 throw new Exception();
         }
+    }
+
+    private String identifyParenExpr() throws Exception {
+        // Looking ahead to determine which type of EXPR it is
+        int i = 0;
+        int parenTracker = 1;
+        String token;
+        while (true) {
+            if (this.tokenizer.peekAtKind() == TokenType.OPERATOR) {
+                token = Character.toString(this.tokenizer.getOp());
+                if ("+-*/%&|<>=~!)".contains(token) && parenTracker == 1) {
+                    break;
+                } else {
+                    if (token == "(") {
+                        parenTracker++;
+                    } else if (token == ")") {
+                        parenTracker--;
+                    }
+                }
+            } else {
+                this.tokenizer.skipToken();
+            }
+            i++;
+        }
+        i++;
+        String exprType;
+        if ("+-*/%&|<>=".contains(token)) {
+            exprType = "BINOP";
+        } else if ("~!".contains(token)) {
+            exprType = "UNOP";
+        } else if (token == ")") {
+            exprType = "PAREN";
+        } else {
+            throw new Exception();
+        }
+        // Look-ahead finished, now backing the tokenizer up to parse the EXPR
+        while (i > 0) {
+            this.tokenizer.pushBack();
+            i--;
+        }
+        return exprType;
     }
 
     private void parseBINOP() throws Exception {
@@ -400,10 +426,8 @@ public class AST {
                 this.parseIDENT();
                 this.current = prevCurrent;
                 // (, TYPE IDENTIFIER)*
-                while (this.tokenizer.peekAtKind() == TokenType.CHARACTER) {
-                    if (this.tokenizer.getCharacter() != ',') {
-                        throw new Exception();
-                    }
+                char token = this.tokenizer.getOp();
+                while (token == ',') {
                     // TYPE
                     typeNode = this.current.addChild(null, Label.TYPE);
                     prevCurrent = this.swapOutCurrent(typeNode);
@@ -415,6 +439,7 @@ public class AST {
                     this.parseIDENT();
                     this.current = prevCurrent;
                 }
+                this.tokenizer.pushBack();
                 break;
             case COMMENT:
                 this.tokenizer.skipToken();
@@ -434,8 +459,8 @@ public class AST {
                 this.parseEXPR();
                 this.current = prevCurrent;
                 // (, EXPR)*
-                while (this.tokenizer.peekAtKind() == TokenType.CHARACTER) {
-                    if (this.tokenizer.getCharacter() != ',') {
+                while (this.tokenizer.peekAtKind() == TokenType.OPERATOR) {
+                    if (this.tokenizer.getOp() != ',') {
                         throw new Exception();
                     }
                     // EXPR
