@@ -25,6 +25,7 @@ public class AST {
     }
 
     public void topDownParse() throws Exception {
+        // System.out.println("start topDownParse");
         switch (this.tokenizer.peekAtKind()) {
             case WORD:
                 // METHODDECL*
@@ -43,7 +44,55 @@ public class AST {
         }
     }
 
+    private void parseMETHODDECL() throws Exception {
+        // System.out.println("start parseMETHODDECL");
+        switch (this.tokenizer.peekAtKind()) {
+            case WORD:
+                // TYPE
+                Node typeNode = this.current.addChild(null, Label.TYPE);
+                Node prevCurrent = this.swapOutCurrent(typeNode);
+                this.parseTYPE();
+                this.current = prevCurrent;
+                // METHOD
+                Node methodNode = this.current.addChild(null, Label.METHOD);
+                prevCurrent = this.swapOutCurrent(methodNode);
+                this.parseMETHOD();
+                this.current = prevCurrent;
+                // (FORMALS?)
+                if (this.tokenizer.getOp() != '(') {
+                    throw new Exception();
+                }
+                if (this.tokenizer.peekAtKind() == TokenType.WORD) {
+                    Node formalsNode = this.current.addChild(null, Label.FORMALS);
+                    prevCurrent = this.swapOutCurrent(formalsNode);
+                    this.parseFORMALS();
+                    this.current = prevCurrent;
+                }
+                if (this.tokenizer.getOp() != ')') {
+                    throw new Exception();
+                }
+                // {BODY}
+                if (this.tokenizer.getOp() != '{') {
+                    throw new Exception();
+                }
+                Node bodyNode = this.current.addChild(null, Label.BODY);
+                prevCurrent = this.swapOutCurrent(bodyNode);
+                this.parseBODY();
+                this.current = prevCurrent;
+                if (this.tokenizer.getOp() != '}') {
+                    throw new Exception();
+                }
+                break;
+            case COMMENT:
+                this.tokenizer.skipToken();
+                break;
+            default:
+                throw new Exception();
+        }
+    }
+
     private void parseBODY() throws Exception {
+        // System.out.println("start parseBODY");
         switch (this.tokenizer.peekAtKind()) {
             case WORD:
                 // VARDECL*
@@ -67,53 +116,8 @@ public class AST {
         }
     }
 
-    private void parseMETHODDECL() throws Exception {
-        switch (this.tokenizer.peekAtKind()) {
-            case WORD:
-                // TYPE
-                Node typeNode = this.current.addChild(null, Label.TYPE);
-                Node prevCurrent = this.swapOutCurrent(typeNode);
-                this.parseTYPE();
-                this.current = prevCurrent;
-                // METHOD
-                Node methodNode = this.current.addChild(null, Label.METHOD);
-                prevCurrent = this.swapOutCurrent(methodNode);
-                this.parseMETHOD();
-                this.current = prevCurrent;
-                // (FORMALS?)
-                if (this.tokenizer.getCharacter() != '(') {
-                    throw new Exception();
-                }
-                if (this.tokenizer.peekAtKind() == TokenType.WORD) {
-                    Node formalsNode = this.current.addChild(null, Label.FORMALS);
-                    prevCurrent = this.swapOutCurrent(formalsNode);
-                    this.parseFORMALS();
-                    this.current = prevCurrent;
-                }
-                if (this.tokenizer.getCharacter() != ')') {
-                    throw new Exception();
-                }
-                // {BODY}
-                if (this.tokenizer.getCharacter() != '{') {
-                    throw new Exception();
-                }
-                Node bodyNode = this.current.addChild(null, Label.BODY);
-                prevCurrent = this.swapOutCurrent(bodyNode);
-                this.parseBODY();
-                this.current = prevCurrent;
-                if (this.tokenizer.getCharacter() != '}') {
-                    throw new Exception();
-                }
-                break;
-            case COMMENT:
-                this.tokenizer.skipToken();
-                break;
-            default:
-                throw new Exception();
-        }
-    }
-
     private void parseVARDECL() throws Exception {
+        // System.out.println("start parseVARDECL");
         switch (this.tokenizer.peekAtKind()) {
             case WORD:
                 // TYPE
@@ -127,22 +131,15 @@ public class AST {
                 this.parseIDENT();
                 this.current = prevCurrent;
                 // (, TYPE IDENTIFIER)*
-                while (this.tokenizer.peekAtKind() == TokenType.CHARACTER) {
-                    if (this.tokenizer.getCharacter() != ',') {
-                        throw new Exception();
-                    }
-                    // TYPE
-                    typeNode = this.current.addChild(null, Label.TYPE);
-                    prevCurrent = this.swapOutCurrent(typeNode);
-                    this.parseTYPE();
-                    this.current = prevCurrent;
+                while (this.tokenizer.getOp() == ',') {
                     // IDENT
                     identNode = this.current.addChild(null, Label.IDENT);
                     prevCurrent = this.swapOutCurrent(identNode);
                     this.parseIDENT();
                     this.current = prevCurrent;
                 }
-                if (this.tokenizer.getCharacter() != ';') {
+                this.tokenizer.pushBack();
+                if (this.tokenizer.getOp() != ';') {
                     throw new Exception();
                 }
                 break;
@@ -155,19 +152,19 @@ public class AST {
     }
 
     private void parseBLOCK() throws Exception {
+        // System.out.println("start parseBLOCK");
         switch (this.tokenizer.peekAtKind()) {
-            case CHARACTER:
+            case OPERATOR:
                 // {STMT+}
-                if (this.tokenizer.getCharacter() != '{')
+                if (this.tokenizer.getOp() != '{')
                     throw new Exception();
                 do {
                     Node stmtNode = this.current.addChild(null, Label.STMT);
                     Node prevCurrent = this.swapOutCurrent(stmtNode);
                     this.parseSTMT();
                     this.current = prevCurrent;
-                } while (this.tokenizer.peekAtKind() != TokenType.CHARACTER);
-
-                if (this.tokenizer.getCharacter() != '}')
+                } while (this.tokenizer.peekAtKind() != TokenType.OPERATOR);
+                if (this.tokenizer.getOp() != '}')
                     throw new Exception();
                 break;
             case COMMENT:
@@ -179,30 +176,42 @@ public class AST {
     }
 
     private void parseSTMT() throws Exception {
+        // System.out.println("start parseSTMT");
         switch (this.tokenizer.peekAtKind()) {
             // ;
-            case CHARACTER:
-                if (this.tokenizer.getCharacter() != ';') {
+            case OPERATOR:
+                if (this.tokenizer.getOp() != ';') {
                     throw new Exception();
                 }
                 break;
-            // VAR = EXPR;
             case WORD:
-                // VAR
-                Node varNode = this.current.addChild(null, Label.VAR);
-                Node prevCurrent = this.swapOutCurrent(varNode);
-                this.parseVAR();
-                this.current = prevCurrent;
-                // =
-                if (this.tokenizer.getCharacter() != '=')
-                    throw new Exception();
-                // EXPR
-                Node exprNode = this.current.addChild(null, Label.EXPR);
-                prevCurrent = this.swapOutCurrent(exprNode);
-                this.parseEXPR();
-                this.current = prevCurrent;
+                // return EXPR;
+                if (this.tokenizer.getWord().equals("return")) {
+                    // EXPR
+                    this.current.value = "return";
+                    Node exprNode = this.current.addChild(null, Label.EXPR);
+                    Node prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                // VAR = EXPR;
+                } else {
+                    this.tokenizer.pushBack();
+                    // VAR
+                    Node varNode = this.current.addChild(null, Label.VAR);
+                    Node prevCurrent = this.swapOutCurrent(varNode);
+                    this.parseVAR();
+                    this.current = prevCurrent;
+                    // =
+                    if (this.tokenizer.getOp() != '=')
+                        throw new Exception();
+                    // EXPR
+                    Node exprNode = this.current.addChild(null, Label.EXPR);
+                    prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                }
                 // ;
-                if (this.tokenizer.getCharacter() != ';') {
+                if (this.tokenizer.getOp() != ';') {
                     throw new Exception();
                 }
                 break;
@@ -215,19 +224,20 @@ public class AST {
     }
 
     private void parseEXPR() throws Exception {
+        // System.out.println("start parseEXPR");
         switch (this.tokenizer.peekAtKind()) {
-            case CHARACTER:
+            case OPERATOR:
                 // (EXPR BINOP EXPR) | (UNOP EXPR) | (EXPR)
-                if (this.tokenizer.getCharacter() != '(')
+                if (this.tokenizer.getOp() != '(')
                     throw new Exception();
                 // Looking ahead to determine which type of EXPR it is
                 int i = 0;
-                while (this.tokenizer.peekAtKind() != TokenType.CHARACTER) {
+                while (this.tokenizer.peekAtKind() != TokenType.OPERATOR) {
                     tokenizer.skipToken();
                     i++;
                 }
                 String exprType;
-                char foundChar = this.tokenizer.getCharacter();
+                char foundChar = this.tokenizer.getOp();
                 i++;
                 if ("+-*/%&|<>=".contains(Character.toString(foundChar))) {
                     exprType = "BINOP";
@@ -277,7 +287,7 @@ public class AST {
                     this.parseEXPR();
                     this.current = prevCurrent;
                 }
-                if (this.tokenizer.getCharacter() != ')') {
+                if (this.tokenizer.getOp() != ')') {
                     throw new Exception();
                 }
                 break;
@@ -292,9 +302,13 @@ public class AST {
             case WORD:
                 // VAR | LITERAL | METHOD (ACTUALS?)
                 String token = this.tokenizer.getWord();
-                if (this.tokenizer.peekAtKind() == TokenType.CHARACTER && this.tokenizer.getCharacter() == '(') {  // METHOD (ACTUALS?)
+                char nextToken = ' ';
+                if (this.tokenizer.peekAtKind() == TokenType.OPERATOR) {
+                    nextToken = this.tokenizer.getOp();
                     this.tokenizer.pushBack();
-                    this.tokenizer.pushBack();
+                }
+                this.tokenizer.pushBack();
+                if (nextToken == '(') {  // METHOD (ACTUALS?)
                     // METHOD
                     Node methodNode = this.current.addChild(null, Label.METHOD);
                     prevCurrent = this.swapOutCurrent(methodNode);
@@ -312,16 +326,17 @@ public class AST {
                         throw new Exception();
                     }
                 } else {
-                    this.tokenizer.pushBack();
-                    if (token == "true" || token == "false") {
+                    if (token.equals("true") || token.equals("false")) {
+                        // LITERAL
                         litNode = this.current.addChild(null, Label.LIT);
                         prevCurrent = this.swapOutCurrent(litNode);
                         this.parseLIT();
                         this.current = prevCurrent;
                     } else {
+                        // VAR
                         Node varNode = this.current.addChild(null, Label.VAR);
                         prevCurrent = this.swapOutCurrent(varNode);
-                        this.parseLIT();
+                        this.parseVAR();
                         this.current = prevCurrent;
                     }
                 }
@@ -335,6 +350,7 @@ public class AST {
     }
 
     private void parseBINOP() throws Exception {
+        // System.out.println("start parseBINOP");
         switch (this.tokenizer.peekAtKind()) {
             case OPERATOR:
                 // [+-*/%&|<>=]
@@ -352,6 +368,7 @@ public class AST {
     }
 
     private void parseUNOP() throws Exception {
+        // System.out.println("start parseUNOP");
         switch (this.tokenizer.peekAtKind()) {
             case OPERATOR:
                 // [~!]
@@ -369,6 +386,7 @@ public class AST {
     }
 
     private void parseFORMALS() throws Exception {
+        // System.out.println("start parseFORMALS");
         switch (this.tokenizer.peekAtKind()) {
             case WORD:
                 // TYPE
@@ -407,6 +425,7 @@ public class AST {
     }
 
     private void parseACTUALS() throws Exception {
+        // System.out.println("start parseACTUALS");
         switch (this.tokenizer.peekAtKind()) {
             case WORD:
                 // EXPR
@@ -435,12 +454,14 @@ public class AST {
     }
 
     private void parseTYPE() throws Exception {
+        // System.out.println("start parseTYPE");
         switch (this.tokenizer.peekAtKind()) {
             case WORD:
                 // int | bool | string
                 String type = this.tokenizer.getWord();
-                if (type != "int" && type != "bool" && type != "string")
+                if (type.equals("int") && type.equals("bool") && type.equals("string")) {
                     throw new Exception();
+                }
                 this.current.value = type;
                 break;
             case COMMENT:
@@ -452,6 +473,7 @@ public class AST {
     }
 
     private void parseMETHOD() throws Exception {
+        // System.out.println("start parseMETHOD");
         // IDENT
         Node identNode = this.current.addChild(null, Label.IDENT);
         Node prevCurrent = this.swapOutCurrent(identNode);
@@ -460,6 +482,7 @@ public class AST {
     }
 
     private void parseVAR() throws Exception {
+        // System.out.println("start parseVAR");
         // IDENT
         Node identNode = this.current.addChild(null, Label.IDENT);
         Node prevCurrent = this.swapOutCurrent(identNode);
@@ -468,6 +491,7 @@ public class AST {
     }
 
     private void parseLIT() throws Exception {
+        // System.out.println("start parseLIT");
         switch (this.tokenizer.peekAtKind()) {
             case INTEGER:
                 // NUM
@@ -496,6 +520,7 @@ public class AST {
     }
 
     private void parseNUM() throws Exception {
+        // System.out.println("start parseNUM");
         switch (this.tokenizer.peekAtKind()) {
             case INTEGER:
                 // [0-9]*
@@ -511,17 +536,12 @@ public class AST {
     }
 
     private void parseSTRING() throws Exception {
+        // System.out.println("start parseSTRING");
         switch (this.tokenizer.peekAtKind()) {
-            case CHARACTER:
+            case STRING:
                 // "[ASCII character]*"
-                if (this.tokenizer.getCharacter() != '"') {
-                    throw new Exception();
-                }
                 String str = this.tokenizer.getString();
                 this.current.value = str;
-                if (this.tokenizer.getCharacter() != '"') {
-                    throw new Exception();
-                }
                 break;
             case COMMENT:
                 this.tokenizer.skipToken();
@@ -532,17 +552,21 @@ public class AST {
     }
 
     private void parseIDENT() throws Exception {
+        // System.out.println("start parseIDENT");
         switch (this.tokenizer.peekAtKind()) {
             case WORD:
                 // [a-zA-Z]
                 String ident = this.tokenizer.getWord();
                 if (ident.isBlank() || !"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(ident.substring(0, 1))) {
+                    // System.out.println("failed on first character.");
                     throw new Exception();
                 }
                 // ([a-zA-Z0-9_]*)
                 for (int i = 1; i < ident.length(); i++) {
-                    if (!"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_".contains(ident.substring(i, i + 1)))
+                    if (!"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_".contains(ident.substring(i, i + 1))) {
+                        // System.out.println("failed after first character.");
                         throw new Exception();
+                    }
                 }
                 this.current.value = ident;
                 break;
