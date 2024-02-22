@@ -171,8 +171,9 @@ public class AST {
                     this.parseSTMT();
                     this.current = prevCurrent;
                 } while (this.tokenizer.peekAtKind() != TokenType.OPERATOR);
-                if (this.tokenizer.getOp() != '}')
+                if (this.tokenizer.getOp() != '}') {
                     throw new Exception();
+                }
                 break;
             case COMMENT:
                 this.tokenizer.skipToken();
@@ -193,13 +194,71 @@ public class AST {
                 break;
             case WORD:
                 // return EXPR;
-                if (this.tokenizer.getWord().equals("return")) {
-                    // EXPR
-                    this.current.value = "return";
+                String token = this.tokenizer.getWord();
+                // if (EXPR) BLOCK else BLOCK
+                if (token.equals("if")) {
+                    this.current.value = "if";
+                    // (EXPR)
+                    if (this.tokenizer.getOp() != '(') {
+                        throw new Exception();
+                    }
                     Node exprNode = this.current.addChild(null, Label.EXPR);
                     Node prevCurrent = this.swapOutCurrent(exprNode);
                     this.parseEXPR();
                     this.current = prevCurrent;
+                    if (this.tokenizer.getOp() != ')') {
+                        throw new Exception();
+                    }
+                    // BLOCK
+                    Node blockNode = this.current.addChild(null, Label.BLOCK);
+                    prevCurrent = this.swapOutCurrent(blockNode);
+                    parseBLOCK();
+                    this.current = prevCurrent;
+                    // else
+                    if (!this.tokenizer.getWord().equals("else")) {
+                        throw new Exception();
+                    }
+                    // BLOCK
+                    blockNode = this.current.addChild(null, Label.BLOCK);
+                    prevCurrent = this.swapOutCurrent(blockNode);
+                    parseBLOCK();
+                    this.current = prevCurrent;
+                // while (EXPR) BLOCK
+                } else if (token.equals("while")) {
+                    this.current.value = "while";
+                    // (EXPR)
+                    if (this.tokenizer.getOp() != '(') {
+                        throw new Exception();
+                    }
+                    Node exprNode = this.current.addChild(null, Label.EXPR);
+                    Node prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                    if (this.tokenizer.getOp() != ')') {
+                        throw new Exception();
+                    }
+                    // BLOCK
+                    Node blockNode = this.current.addChild(null, Label.BLOCK);
+                    prevCurrent = this.swapOutCurrent(blockNode);
+                    parseBLOCK();
+                    this.current = prevCurrent;
+                } else if (token.equals("break")) {
+                    this.current.value = "break";
+                    // ;
+                    if (this.tokenizer.getOp() != ';') {
+                        throw new Exception();
+                    }
+                } else if (token.equals("return")) {
+                    this.current.value = "return";
+                    // EXPR
+                    Node exprNode = this.current.addChild(null, Label.EXPR);
+                    Node prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                    // ;
+                    if (this.tokenizer.getOp() != ';') {
+                        throw new Exception();
+                    }
                 // VAR = EXPR;
                 } else {
                     this.tokenizer.pushBack();
@@ -216,10 +275,10 @@ public class AST {
                     prevCurrent = this.swapOutCurrent(exprNode);
                     this.parseEXPR();
                     this.current = prevCurrent;
-                }
-                // ;
-                if (this.tokenizer.getOp() != ';') {
-                    throw new Exception();
+                    // ;
+                    if (this.tokenizer.getOp() != ';') {
+                        throw new Exception();
+                    }
                 }
                 break;
             case COMMENT:
@@ -238,7 +297,31 @@ public class AST {
                 if (this.tokenizer.getOp() != '(')
                     throw new Exception();
                 String exprType = this.identifyParenExpr();
-                if (exprType == "BINOP") {  // (EXPR BINOP EXPR)
+                if (exprType == "TERNARY") {
+                    // EXPR
+                    Node exprNode = this.current.addChild(null, Label.EXPR);
+                    Node prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                    // ?
+                    if (this.tokenizer.getOp() != '?') {
+                        throw new Exception();
+                    }
+                    // EXPR
+                    exprNode = this.current.addChild(null, Label.EXPR);
+                    prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                    // :
+                    if (this.tokenizer.getOp() != ':') {
+                        throw new Exception();
+                    }
+                    // EXPR
+                    exprNode = this.current.addChild(null, Label.EXPR);
+                    prevCurrent = this.swapOutCurrent(exprNode);
+                    this.parseEXPR();
+                    this.current = prevCurrent;
+                } else if (exprType == "BINOP") {  // (EXPR BINOP EXPR)
                     // EXPR
                     Node exprNode = this.current.addChild(null, Label.EXPR);
                     Node prevCurrent = this.swapOutCurrent(exprNode);
@@ -303,10 +386,21 @@ public class AST {
                     if (this.tokenizer.getOp() != '(') {
                         throw new Exception();
                     }
-                    Node actualsNode = this.current.addChild(null, Label.ACTUALS);
-                    prevCurrent = this.swapOutCurrent(actualsNode);
-                    this.parseACTUALS();
-                    this.current = prevCurrent;
+                    if (this.tokenizer.peekAtKind() == TokenType.OPERATOR) {
+                        char op = this.tokenizer.getOp();
+                        this.tokenizer.pushBack();
+                        if (op != ')') {
+                            Node actualsNode = this.current.addChild(null, Label.ACTUALS);
+                            prevCurrent = this.swapOutCurrent(actualsNode);
+                            this.parseACTUALS();
+                            this.current = prevCurrent;
+                        }
+                    } else {
+                        Node actualsNode = this.current.addChild(null, Label.ACTUALS);
+                        prevCurrent = this.swapOutCurrent(actualsNode);
+                        this.parseACTUALS();
+                        this.current = prevCurrent;
+                    }
                     if (this.tokenizer.getOp() != ')') {
                         throw new Exception();
                     }
@@ -342,14 +436,12 @@ public class AST {
         while (true) {
             if (this.tokenizer.peekAtKind() == TokenType.OPERATOR) {
                 token = Character.toString(this.tokenizer.getOp());
-                if ("+-*/%&|<>=~!)".contains(token) && parenTracker == 1) {
+                if ("?+-*/%&|<>=~!)".contains(token) && parenTracker == 1) {
                     break;
-                } else {
-                    if (token == "(") {
-                        parenTracker++;
-                    } else if (token == ")") {
-                        parenTracker--;
-                    }
+                } else if (token.equals("(")) {
+                    parenTracker++;
+                } else if (token.equals(")")) {
+                    parenTracker--;
                 }
             } else {
                 this.tokenizer.skipToken();
@@ -358,11 +450,13 @@ public class AST {
         }
         i++;
         String exprType;
-        if ("+-*/%&|<>=".contains(token)) {
+        if (token.equals("?")) {
+            exprType = "TERNARY";
+        } else if ("+-*/%&|<>=".contains(token)) {
             exprType = "BINOP";
         } else if ("~!".contains(token)) {
             exprType = "UNOP";
-        } else if (token == ")") {
+        } else if (token.equals(")")) {
             exprType = "PAREN";
         } else {
             throw new Exception();
@@ -426,8 +520,7 @@ public class AST {
                 this.parseIDENT();
                 this.current = prevCurrent;
                 // (, TYPE IDENTIFIER)*
-                char token = this.tokenizer.getOp();
-                while (token == ',') {
+                while (this.tokenizer.getOp() == ',') {
                     // TYPE
                     typeNode = this.current.addChild(null, Label.TYPE);
                     prevCurrent = this.swapOutCurrent(typeNode);
@@ -452,6 +545,9 @@ public class AST {
     private void parseACTUALS() throws Exception {
         // System.out.println("start parseACTUALS");
         switch (this.tokenizer.peekAtKind()) {
+            case INTEGER:
+            case STRING:
+            case OPERATOR:
             case WORD:
                 // EXPR
                 Node exprNode = this.current.addChild(null, Label.EXPR);
@@ -460,7 +556,11 @@ public class AST {
                 this.current = prevCurrent;
                 // (, EXPR)*
                 while (this.tokenizer.peekAtKind() == TokenType.OPERATOR) {
-                    if (this.tokenizer.getOp() != ',') {
+                    char token = this.tokenizer.getOp();
+                    if (token == ')') {
+                        this.tokenizer.pushBack();
+                        break;
+                    } else if (token != ',') {
                         throw new Exception();
                     }
                     // EXPR
@@ -583,13 +683,11 @@ public class AST {
                 // [a-zA-Z]
                 String ident = this.tokenizer.getWord();
                 if (ident.isBlank() || !"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(ident.substring(0, 1))) {
-                    // System.out.println("failed on first character.");
                     throw new Exception();
                 }
                 // ([a-zA-Z0-9_]*)
                 for (int i = 1; i < ident.length(); i++) {
                     if (!"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_".contains(ident.substring(i, i + 1))) {
-                        // System.out.println("failed after first character.");
                         throw new Exception();
                     }
                 }
