@@ -5,11 +5,11 @@ import java.util.Map;
 
 class SamCoder {
 	private int counter;
-	private Map<String, Integer> variables;
+	private Map<String, Pair<String, Integer>> variables;
 
 	public SamCoder() {
 		this.counter = 0;
-		this.variables = new HashMap<String, Integer>();
+		this.variables = new HashMap<String, Pair<String, Integer>>();
 	}
 
 	public String generateSamCode(AST ast) {
@@ -26,7 +26,6 @@ class SamCoder {
 
     private String generateSamMETHODDECL(Node methodDeclNode) {
         String methodDeclStr = "";
-        methodDeclStr.concat(generateSamTYPE(methodDeclNode.children.get(0)));
         methodDeclStr.concat(generateSamMETHOD(methodDeclNode.children.get(1)));
         if (methodDeclNode.children.get(2).label == Label.FORMALS) {
             methodDeclStr.concat(generateSamFORMALS(methodDeclNode.children.get(2)));
@@ -46,10 +45,10 @@ class SamCoder {
 
     private String generateSamVARDECL(Node varDeclNode) {
 		String varDeclStr = "";
-		varDeclStr.concat(generateSamTYPE(varDeclNode.children.get(0)));
 		for (int i = 1; i < varDeclNode.children.size(); i++) {
 			this.counter++;
-			this.variables.put(varDeclNode.children.get(i).value, this.counter);
+			Pair<String, Integer> typeLocPair = new Pair<String, Integer>(varDeclNode.children.get(0).value, this.counter);
+			this.variables.put(varDeclNode.children.get(i).value, typeLocPair);
 			varDeclStr.concat("ADDSP 1");
 		}
 		return varDeclStr;
@@ -66,14 +65,24 @@ class SamCoder {
 
 	private String generateSamSTMT(Node stmtNode) {
 		String stmtStr = "";
-		if (!stmtNode.children.isEmpty()) {
-			Node varNode = stmtNode.children.get(0);
-			stmtStr.concat(generateSamVAR(varNode));
-			Node exprNode = stmtNode.children.get(1);
-			stmtStr.concat(generateSamEXPR(exprNode));
-			int varLoc = this.variables.get(varNode.value);
-			String varStr = "STOREOFF " + varLoc + "\n";
-			stmtStr.concat(varStr);
+		switch (stmtNode.value) {
+			case "if":
+				break;
+			case "while":
+				break;
+			case "break":
+				break;
+			case "return":
+				break;
+			case "assign":
+				stmtStr.concat(generateSamVAR(stmtNode.children.get(0)));
+				stmtStr.concat(generateSamEXPR(stmtNode.children.get(1)));
+				Pair<String, Integer> typeLocPair = this.variables.get(stmtNode.children.get(0).value);
+				String varStr = "STOREOFF " + typeLocPair.snd() + "\n";
+				stmtStr.concat(varStr);
+				break;
+			default:
+				break;
 		}
 		return stmtStr;
 	}
@@ -82,26 +91,30 @@ class SamCoder {
         String exprStr = "";
         if (exprNode.children.get(0).label == Label.METHOD) {
 
-        } else switch (exprNode.children.size()) {
-            case 1:
-                Node child = exprNode.children.get(0);
-                if (child.label == Label.EXPR) {
-                    exprStr.concat(generateSamEXPR(child));
-                } else if (child.label == Label.VAR) {
-                    exprStr.concat(generateSamVAR(child));
-                } else if (child.label == Label.LIT) {
-                    exprStr.concat(generateSamLIT(child));
-                } else {
-                    throw new Error();
-                }
-            case 2:
-                exprStr.concat(generateSamEXPR(exprNode.children.get(1)));
-                exprStr.concat(generateSamUNOP(exprNode.children.get(0)));
-            case 3:
+        } else switch (exprNode.value) {
+			case "ternary":
+				break;
+			case "binop":
                 exprStr.concat(generateSamEXPR(exprNode.children.get(0)));
                 exprStr.concat(generateSamEXPR(exprNode.children.get(2)));
                 exprStr.concat(generateSamBINOP(exprNode.children.get(1)));
                 break;
+            case "unop":
+                exprStr.concat(generateSamEXPR(exprNode.children.get(1)));
+                exprStr.concat(generateSamUNOP(exprNode.children.get(0)));
+				break;
+			case "paren":
+                exprStr.concat(generateSamEXPR(exprNode.children.get(0)));
+				break;
+			case "method":
+				exprStr.concat(generateSamACTUALS(exprNode.children.get(1)));
+				exprStr.concat(generateSamMETHOD(exprNode.children.get(0)));
+			case "var":
+				exprStr.concat(generateSamVAR(exprNode.children.get(0)));
+				break;
+			case "lit":
+				exprStr.concat(generateSamLIT(exprNode.children.get(0)));
+				break;
             default:
                 throw new Error();
         }
@@ -158,10 +171,6 @@ class SamCoder {
         return null;
     }
 
-	private String generateSamTYPE(Node typeNode) {
-		return "";
-	}
-
     private String generateSamMETHOD(Node methodNode) {
         String methodStr = "";
         methodStr.concat("LINK");
@@ -209,5 +218,23 @@ class SamCoder {
 
 	private String generateSamIDENT(Node identNode) {
 		return "";
+	}
+}
+
+class Pair<T1, T2> {
+	private T1 a;
+	private T2 b;
+
+	public Pair(T1 a, T2 b) {
+		this.a = a;
+		this.b = b;
+	}
+
+	public T1 fst() {
+		return this.a;
+	}
+
+	public T2 snd() {
+		return this.b;
 	}
 }

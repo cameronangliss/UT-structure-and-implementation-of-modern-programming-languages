@@ -262,6 +262,7 @@ public class AST {
                 // VAR = EXPR;
                 } else {
                     this.tokenizer.pushBack();
+                    this.current.value = "assign";
                     // VAR
                     Node varNode = this.current.addChild(null, Label.VAR);
                     Node prevCurrent = this.swapOutCurrent(varNode);
@@ -298,6 +299,7 @@ public class AST {
                     throw new Exception();
                 String exprType = this.identifyParenExpr();
                 if (exprType == "TERNARY") {
+                    this.current.value = "ternary";
                     // EXPR
                     Node exprNode = this.current.addChild(null, Label.EXPR);
                     Node prevCurrent = this.swapOutCurrent(exprNode);
@@ -322,6 +324,7 @@ public class AST {
                     this.parseEXPR();
                     this.current = prevCurrent;
                 } else if (exprType == "BINOP") {  // (EXPR BINOP EXPR)
+                    this.current.value = "binop";
                     // EXPR
                     Node exprNode = this.current.addChild(null, Label.EXPR);
                     Node prevCurrent = this.swapOutCurrent(exprNode);
@@ -338,6 +341,7 @@ public class AST {
                     this.parseEXPR();
                     this.current = prevCurrent;
                 } else if (exprType == "UNOP") {  // (UNOP EXPR)
+                    this.current.value = "unop";
                     // UNOP
                     Node unop = this.current.addChild(null, Label.UNOP);
                     Node prevCurrent = this.swapOutCurrent(unop);
@@ -349,6 +353,7 @@ public class AST {
                     this.parseEXPR();
                     this.current = prevCurrent;
                 } else if (exprType == "PAREN") {  // (EXPR)
+                    this.current.value = "paren";
                     // EXPR
                     Node exprNode = this.current.addChild(null, Label.EXPR);
                     Node prevCurrent = this.swapOutCurrent(exprNode);
@@ -361,6 +366,7 @@ public class AST {
                 break;
             case INTEGER:
             case STRING:
+                this.current.value = "lit";
                 // LITERAL
                 Node litNode = this.current.addChild(null, Label.LIT);
                 Node prevCurrent = this.swapOutCurrent(litNode);
@@ -377,6 +383,7 @@ public class AST {
                 }
                 this.tokenizer.pushBack();
                 if (nextToken == '(') {  // METHOD (ACTUALS?)
+                    this.current.value = "method";
                     // METHOD
                     Node methodNode = this.current.addChild(null, Label.METHOD);
                     prevCurrent = this.swapOutCurrent(methodNode);
@@ -404,20 +411,18 @@ public class AST {
                     if (this.tokenizer.getOp() != ')') {
                         throw new Exception();
                     }
-                } else {
-                    if (token.equals("true") || token.equals("false")) {
-                        // LITERAL
-                        litNode = this.current.addChild(null, Label.LIT);
-                        prevCurrent = this.swapOutCurrent(litNode);
-                        this.parseLIT();
-                        this.current = prevCurrent;
-                    } else {
-                        // VAR
-                        Node varNode = this.current.addChild(null, Label.VAR);
-                        prevCurrent = this.swapOutCurrent(varNode);
-                        this.parseVAR();
-                        this.current = prevCurrent;
-                    }
+                } else if (token.equals("true") || token.equals("false")) {  // LITERAL
+                    this.current.value = "lit";
+                    litNode = this.current.addChild(null, Label.LIT);
+                    prevCurrent = this.swapOutCurrent(litNode);
+                    this.parseLIT();
+                    this.current = prevCurrent;
+                } else {  // VAR
+                    this.current.value = "var";
+                    Node varNode = this.current.addChild(null, Label.VAR);
+                    prevCurrent = this.swapOutCurrent(varNode);
+                    this.parseVAR();
+                    this.current = prevCurrent;
                 }
                 break;
             case COMMENT:
