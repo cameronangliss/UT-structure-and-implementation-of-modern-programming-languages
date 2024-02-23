@@ -111,9 +111,7 @@ class SamCoder {
 	private String generateSamEXPR(Node exprNode) throws Exception {
 		// System.out.println("start generateSamEXPR");
         String exprStr = "";
-        if (exprNode.children.get(0).label == Label.METHOD) {
-
-        } else switch (exprNode.value) {
+    	switch (exprNode.value) {
 			case "ternary":
 				break;
 			case "binop":

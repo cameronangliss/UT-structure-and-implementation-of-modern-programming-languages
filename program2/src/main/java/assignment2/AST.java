@@ -26,6 +26,7 @@ public class AST {
 
     public void topDownParse() throws Exception {
         // System.out.println("start topDownParse");
+        Node mainMethod = null;
         switch (this.tokenizer.peekAtKind()) {
             case WORD:
                 // METHODDECL*
@@ -34,7 +35,15 @@ public class AST {
                     Node prevCurrent = this.swapOutCurrent(methodDeclNode);
                     parseMETHODDECL();
                     this.current = prevCurrent;
+                    if (methodDeclNode.children.get(1).value.equals("main")) {
+                        mainMethod = methodDeclNode;
+                    }
                 }
+                if (mainMethod == null) {
+                    throw new Exception();
+                }
+                this.current.children.remove(mainMethod);
+                this.current.children.add(0, mainMethod);
                 break;
             case COMMENT:
                 this.tokenizer.skipToken();
