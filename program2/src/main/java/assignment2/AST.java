@@ -613,6 +613,9 @@ public class AST {
 
     private void parseVAR() throws Exception {
         // System.out.println("start parseVAR");
+        String varName = this.tokenizer.getWord();
+        this.tokenizer.pushBack();
+        this.current.value = varName;
         // IDENT
         Node identNode = this.current.addChild(null, Label.IDENT);
         Node prevCurrent = this.swapOutCurrent(identNode);
@@ -624,6 +627,7 @@ public class AST {
         // System.out.println("start parseLIT");
         switch (this.tokenizer.peekAtKind()) {
             case INTEGER:
+                this.current.value = "num";
                 // NUM
                 Node numNode = this.current.addChild(null, Label.NUM);
                 Node prevCurrent = this.swapOutCurrent(numNode);
@@ -631,6 +635,7 @@ public class AST {
                 this.current = prevCurrent;
                 break;
             case STRING:
+                this.current.value = "string";
                 // STRING
                 Node stringNode = this.current.addChild(null, Label.STRING);
                 prevCurrent = this.swapOutCurrent(stringNode);
@@ -638,6 +643,7 @@ public class AST {
                 this.current = prevCurrent;
                 break;
             case WORD:
+                this.current.value = "bool";
                 // true | false
                 this.current.value = this.tokenizer.getWord();
                 break;
