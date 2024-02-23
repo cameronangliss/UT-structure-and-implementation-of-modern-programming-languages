@@ -4,12 +4,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 class SamCoder {
-	private int pc;
+	private int sp;
 	private int fbr;
 	private Map<String, Pair<String, Integer>> variables;
 
 	public SamCoder() {
-		this.pc = 0;
+		this.sp = 0;
 		this.fbr = 0;
 		this.variables = new HashMap<String, Pair<String, Integer>>();
 	}
@@ -34,12 +34,15 @@ class SamCoder {
         methodDeclStr = methodDeclStr.concat(methodName + ":\n");
 		if (methodName.equals("main")) {
 			methodDeclStr = methodDeclStr.concat("PUSHIMM 0\n");
-			this.pc++;
+			this.sp++;
 			if (methodDeclNode.children.get(2).label == Label.FORMALS) {
 				throw new Exception();
 			}
 		}
         methodDeclStr = methodDeclStr.concat(generateSamBODY(methodDeclNode.children.get(methodDeclNode.children.size() - 1)));
+		if (methodName.equals("main")) {
+			methodDeclStr = methodDeclStr.concat("STOP\n");
+		}
         return methodDeclStr;
     }
 
@@ -57,9 +60,9 @@ class SamCoder {
 		// System.out.println("start generateSamVARDECL");
 		String varDeclStr = "";
 		for (int i = 1; i < varDeclNode.children.size(); i++) {
-			Pair<String, Integer> typeLocPair = new Pair<String, Integer>(varDeclNode.children.get(0).value, this.pc);
+			Pair<String, Integer> typeLocPair = new Pair<String, Integer>(varDeclNode.children.get(0).value, this.sp);
 			this.variables.put(varDeclNode.children.get(i).value, typeLocPair);
-			this.pc++;
+			this.sp++;
 		}
 		if (varDeclNode.children.size() > 1) {
 			varDeclStr = varDeclStr.concat("ADDSP " + (varDeclNode.children.size() - 1) + "\n");
@@ -89,13 +92,15 @@ class SamCoder {
 			case "return":
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat("STOREOFF " + this.fbr + "\n");
-				stmtStr = stmtStr.concat("ADDSP " + (-this.pc) + "\n");
+				this.sp--;
+				stmtStr = stmtStr.concat("ADDSP " + (-this.sp) + "\n");
 				break;
 			case "assign":
 				stmtStr = stmtStr.concat(generateSamVAR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(1)));
 				Pair<String, Integer> typeLocPair = this.variables.get(stmtNode.children.get(0).value);
 				stmtStr = stmtStr.concat("STOREOFF " + typeLocPair.snd() + "\n");
+				this.sp--;
 				break;
 			default:
 				break;
@@ -192,7 +197,7 @@ class SamCoder {
 
 	private String generateSamLIT(Node litNode) throws Exception {
 		// System.out.println("start generateSamLIT");
-		this.pc++;
+		this.sp++;
 		switch (litNode.value) {
 			case "bool":
 				if (litNode.value == "true") {
@@ -211,13 +216,13 @@ class SamCoder {
 
 	private String generateSamNUM(Node numNode) throws Exception {
 		// System.out.println("start generateSamNUM");
-		this.pc++;
+		this.sp++;
 		return "PUSHIMM " + numNode.value + "\n";
 	}
 
 	private String generateSamSTRING(Node stringNode) throws Exception {
 		// System.out.println("start generateSamSTRING");
-		this.pc++;
+		this.sp++;
 		return "PUSHIMMSTR \"" + stringNode.value + "\"\n";
 	}
 
