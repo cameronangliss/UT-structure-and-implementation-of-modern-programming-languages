@@ -4,11 +4,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 class SamCoder {
-	private int counter;
+	private int pc;
+	private int fbr;
 	private Map<String, Pair<String, Integer>> variables;
 
 	public SamCoder() {
-		this.counter = 0;
+		this.pc = 0;
+		this.fbr = 0;
 		this.variables = new HashMap<String, Pair<String, Integer>>();
 	}
 
@@ -28,10 +30,15 @@ class SamCoder {
     private String generateSamMETHODDECL(Node methodDeclNode) throws Exception {
 		// System.out.println("start generateSamMETHODDECL");
         String methodDeclStr = "";
-        methodDeclStr = methodDeclStr.concat(generateSamMETHOD(methodDeclNode.children.get(1)));
-        if (methodDeclNode.children.get(2).label == Label.FORMALS) {
-            methodDeclStr = methodDeclStr.concat(generateSamFORMALS(methodDeclNode.children.get(2)));
-        }
+		String methodName = methodDeclNode.children.get(1).value;
+        methodDeclStr = methodDeclStr.concat(methodName + ":\n");
+		if (methodName.equals("main")) {
+			methodDeclStr = methodDeclStr.concat("PUSHIMM 0\n");
+			this.pc++;
+			if (methodDeclNode.children.get(2).label == Label.FORMALS) {
+				throw new Exception();
+			}
+		}
         methodDeclStr = methodDeclStr.concat(generateSamBODY(methodDeclNode.children.get(methodDeclNode.children.size() - 1)));
         return methodDeclStr;
     }
@@ -50,10 +57,12 @@ class SamCoder {
 		// System.out.println("start generateSamVARDECL");
 		String varDeclStr = "";
 		for (int i = 1; i < varDeclNode.children.size(); i++) {
-			this.counter++;
-			Pair<String, Integer> typeLocPair = new Pair<String, Integer>(varDeclNode.children.get(0).value, this.counter);
+			Pair<String, Integer> typeLocPair = new Pair<String, Integer>(varDeclNode.children.get(0).value, this.pc);
 			this.variables.put(varDeclNode.children.get(i).value, typeLocPair);
-			varDeclStr = varDeclStr.concat("ADDSP 1\n");
+			this.pc++;
+		}
+		if (varDeclNode.children.size() > 1) {
+			varDeclStr = varDeclStr.concat("ADDSP " + (varDeclNode.children.size() - 1) + "\n");
 		}
 		return varDeclStr;
 	}
@@ -79,13 +88,14 @@ class SamCoder {
 				break;
 			case "return":
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(0)));
+				stmtStr = stmtStr.concat("STOREOFF " + this.fbr + "\n");
+				stmtStr = stmtStr.concat("ADDSP " + (-this.pc) + "\n");
 				break;
 			case "assign":
 				stmtStr = stmtStr.concat(generateSamVAR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(1)));
 				Pair<String, Integer> typeLocPair = this.variables.get(stmtNode.children.get(0).value);
-				String varStr = "STOREOFF " + typeLocPair.snd() + "\n";
-				stmtStr = stmtStr.concat(varStr);
+				stmtStr = stmtStr.concat("STOREOFF " + typeLocPair.snd() + "\n");
 				break;
 			default:
 				break;
@@ -115,9 +125,11 @@ class SamCoder {
 				break;
 			case "method":
 				exprStr = exprStr.concat(generateSamACTUALS(exprNode.children.get(1)));
-				exprStr = exprStr.concat(generateSamMETHOD(exprNode.children.get(0)));
-			case "var":
-				exprStr = exprStr.concat(generateSamVAR(exprNode.children.get(0)));
+				exprStr = exprStr.concat("LINK\n");
+				exprStr = exprStr.concat("JSR " + exprNode.children.get(0).value + "\n");
+				exprStr = exprStr.concat("UNLINK\n");
+				case "var":
+				exprStr = "PUSHOFF " + this.variables.get(exprNode.children.get(0).value).snd() + "\n";
 				break;
 			case "lit":
 				exprStr = exprStr.concat(generateSamLIT(exprNode.children.get(0)));
@@ -168,27 +180,9 @@ class SamCoder {
 		}
 	}
 
-    private String generateSamFORMALS(Node formalsNode) throws Exception {
-		// System.out.println("start generateSamFORMALS");
-        String formalsStr = "";
-        for (int i = 1; i < formalsNode.children.size(); i += 2) {
-            formalsStr = formalsStr.concat(generateSamIDENT(formalsNode.children.get(i)));
-        }
-        return formalsStr;
-    }
-
     private String generateSamACTUALS(Node actualsNode) throws Exception {
 		// System.out.println("start generateSamACTUALS");
         return null;
-    }
-
-    private String generateSamMETHOD(Node methodNode) {
-		// System.out.println("start generateSamMETHOD");
-        String methodStr = "";
-        methodStr = methodStr.concat("LINK\n");
-        methodStr = methodStr.concat("JSR " + methodNode.value + "\n");
-        methodStr = methodStr.concat("UNLINK\n");
-        return methodStr;
     }
 
 	private String generateSamVAR(Node varNode) throws Exception {
@@ -198,7 +192,7 @@ class SamCoder {
 
 	private String generateSamLIT(Node litNode) throws Exception {
 		// System.out.println("start generateSamLIT");
-		this.counter++;
+		this.pc++;
 		switch (litNode.value) {
 			case "bool":
 				if (litNode.value == "true") {
@@ -217,14 +211,14 @@ class SamCoder {
 
 	private String generateSamNUM(Node numNode) throws Exception {
 		// System.out.println("start generateSamNUM");
-		this.counter++;
+		this.pc++;
 		return "PUSHIMM " + numNode.value + "\n";
 	}
 
 	private String generateSamSTRING(Node stringNode) throws Exception {
 		// System.out.println("start generateSamSTRING");
-		this.counter++;
-		return "PUSHIMMSTR " + stringNode.value + "\n";
+		this.pc++;
+		return "PUSHIMMSTR \"" + stringNode.value + "\"\n";
 	}
 
 	private String generateSamIDENT(Node identNode) throws Exception {

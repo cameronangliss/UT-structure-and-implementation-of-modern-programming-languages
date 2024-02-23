@@ -604,6 +604,9 @@ public class AST {
 
     private void parseMETHOD() throws Exception {
         // System.out.println("start parseMETHOD");
+        String methodName = this.tokenizer.getWord();
+        this.tokenizer.pushBack();
+        this.current.value = methodName;
         // IDENT
         Node identNode = this.current.addChild(null, Label.IDENT);
         Node prevCurrent = this.swapOutCurrent(identNode);
