@@ -39,7 +39,7 @@ class SamCoder {
 		Node main = new Node("method", Label.EXPR);
 		main.addChild("main", Label.METHOD);
 		prgmStr = prgmStr.concat(this.generateSamEXPR(main));
-		prgmStr = prgmStr.concat("STOP\n");
+		prgmStr = prgmStr.concat("STOP\n\n");
         for (Node child : prgmNode.children) {
             prgmStr = prgmStr.concat(generateSamMETHODDECL(child));
         }
@@ -66,7 +66,7 @@ class SamCoder {
 		methodDeclStr = methodDeclStr.concat(methodName + "DONE:\n");
 		methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.methodParamCounts.get(methodName) + 1) + "\n");
 		methodDeclStr = methodDeclStr.concat("ADDSP " + -(bodyNode.children.get(0).children.size() - 1) + "\n");
-		methodDeclStr = methodDeclStr.concat("RST\n");
+		methodDeclStr = methodDeclStr.concat("RST\n\n");
         return methodDeclStr;
     }
 
