@@ -191,6 +191,7 @@ public class AST {
                 if (this.tokenizer.getOp() != ';') {
                     throw new Exception();
                 }
+                this.current.value = "semicolon";
                 break;
             case WORD:
                 // return EXPR;
