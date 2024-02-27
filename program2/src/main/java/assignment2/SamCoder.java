@@ -6,12 +6,16 @@ import java.util.Map;
 class SamCoder {
 	private int sp;
 	private int fbr;
+	private int if_counter;
 	private Map<String, Pair<String, Integer>> variables;
+	private StrOpCoder strOpCoder;
 
 	public SamCoder() {
 		this.sp = 0;
 		this.fbr = 0;
+		this.if_counter = 0;
 		this.variables = new HashMap<String, Pair<String, Integer>>();
+		this.strOpCoder = new StrOpCoder();
 	}
 
 	public String generateSamCode(AST ast) throws Exception {
@@ -84,6 +88,14 @@ class SamCoder {
 		String stmtStr = "";
 		switch (stmtNode.value) {
 			case "if":
+				this.if_counter++;
+				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(0)));
+				stmtStr = stmtStr.concat("JUMPC IFTRUE" + this.if_counter + "\n");
+				stmtStr = stmtStr.concat(generateSamBLOCK(stmtNode.children.get(2)));
+				stmtStr = stmtStr.concat("JUMP AFTERIF" + this.if_counter + "\n");
+				stmtStr = stmtStr.concat("IFTRUE" + this.if_counter + ":\n");
+				stmtStr = stmtStr.concat(generateSamBLOCK(stmtNode.children.get(1)));
+				stmtStr = stmtStr.concat("AFTERIF" + this.if_counter + ":\n");
 				break;
 			case "while":
 				break;
@@ -127,18 +139,18 @@ class SamCoder {
 				) {
 					exprStr = exprStr.concat(generateSamBINOP(exprNode.children.get(1)));
 				} else if (exprNode.children.get(1).value.equals("+")) {
-					exprStr.concat(StrOpCoder.strConcat());
+					exprStr = exprStr.concat(this.strOpCoder.strConcat());
 				} else if (exprNode.children.get(1).value.equals("*")) {
-					exprStr.concat(StrOpCoder.strRepeat());
+					exprStr = exprStr.concat(this.strOpCoder.strRepeat());
 				} else if (exprNode.children.get(1).value.equals(">")) {
-					exprStr.concat(StrOpCoder.strCmp());
-					exprStr.concat("PUSHIMM -1\nEQUAL\n");
+					exprStr = exprStr.concat(this.strOpCoder.strCmp());
+					exprStr = exprStr.concat("PUSHIMM -1\nEQUAL\n");
 				} else if (exprNode.children.get(1).value.equals("=")) {
-					exprStr.concat(StrOpCoder.strCmp());
-					exprStr.concat("PUSHIMM 0\nEQUAL\n");
+					exprStr = exprStr.concat(this.strOpCoder.strCmp());
+					exprStr = exprStr.concat("PUSHIMM 0\nEQUAL\n");
 				} else if (exprNode.children.get(1).value.equals("<")) {
-					exprStr.concat(StrOpCoder.strCmp());
-					exprStr.concat("PUSHIMM 1\nEQUAL\n");
+					exprStr = exprStr.concat(this.strOpCoder.strCmp());
+					exprStr = exprStr.concat("PUSHIMM 1\nEQUAL\n");
 				} else {
 					throw new Exception();
 				}
@@ -155,7 +167,7 @@ class SamCoder {
 				) {
 					exprStr = exprStr.concat(generateSamUNOP(exprNode.children.get(0)));
 				} else if (exprNode.children.get(0).value.equals("~")) {
-					exprStr = exprStr.concat(StrOpCoder.revStr());
+					exprStr = exprStr.concat(this.strOpCoder.strRev());
 				} else {
 					throw new Exception();
 				}
