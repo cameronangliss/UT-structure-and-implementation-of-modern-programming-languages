@@ -53,7 +53,7 @@ class SamCoder {
         methodDeclStr = methodDeclStr.concat(methodName + ":\n");
 		if (methodDeclNode.children.size() == 4) {
 			List<Node> formalTypesAndNames = methodDeclNode.children.get(2).children;
-			for (int i = 0; i < formalTypesAndNames.size(); i++) {
+			for (int i = 0; i < formalTypesAndNames.size() / 2; i++) {
 				String type = formalTypesAndNames.get(2 * i).value;
 				String name = formalTypesAndNames.get(2 * i + 1).value;
 				int loc = i - this.methodParamCounts.get(methodName);
@@ -126,10 +126,8 @@ class SamCoder {
 				stmtStr = stmtStr.concat("JUMP " + this.currentMethod + "DONE\n");
 				return stmtStr;
 			case "assign":
-				stmtStr = stmtStr.concat(generateSamVAR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(1)));
-				Pair<String, Integer> typeLocPair = this.variables.get(stmtNode.children.get(0).value);
-				stmtStr = stmtStr.concat("STOREOFF " + typeLocPair.snd() + "\n");
+				stmtStr = stmtStr.concat(generateSamVAR(stmtNode.children.get(0), false));
 				return stmtStr;
 			default:
 				throw new Exception();
@@ -182,7 +180,11 @@ class SamCoder {
 					exprNode
 						.getAllDescendantVars()
 						.stream()
-						.noneMatch(varName -> this.variables.get(varName).fst().equals("String"))
+						.noneMatch(varName -> this.variables
+							.getOrDefault(varName, new Pair<String, Integer>("", 0))
+							.fst()
+							.equals("String")
+						)
 					&& !operandStr.contains("PUSHIMMSTR")
 				) {
 					exprStr = exprStr.concat(generateSamUNOP(exprNode.children.get(0)));
@@ -209,7 +211,7 @@ class SamCoder {
 				}
 				return exprStr;
 			case "var":
-				return "PUSHOFF " + this.variables.get(exprNode.children.get(0).value).snd() + "\n";
+				return this.generateSamVAR(exprNode.children.get(0), true);
 			case "lit":
 				return generateSamLIT(exprNode.children.get(0));
             default:
@@ -266,20 +268,23 @@ class SamCoder {
 		return actualsStr;
     }
 
-	private String generateSamVAR(Node varNode) throws Exception {
+	private String generateSamVAR(Node varNode, boolean isReading) throws Exception {
 		// System.out.println("start generateSamVAR");
-		return generateSamIDENT(varNode.children.get(0));
+		int varLoc = this.variables.get(varNode.value).snd();
+		if (isReading) {
+			return "PUSHOFF " + varLoc + "\n";
+		} else {
+			return "STOREOFF " + varLoc + "\n";
+		}
 	}
 
 	private String generateSamLIT(Node litNode) throws Exception {
 		// System.out.println("start generateSamLIT");
 		switch (litNode.value) {
-			case "bool":
-				if (litNode.value == "true") {
-					return "PUSHIMM 1\n";
-				} else if (litNode.value == "false") {
-					return "PUSHIMM 0\n";
-				}
+			case "true":
+				return "PUSHIMM 1\n";
+			case "false":
+				return "PUSHIMM 0\n";
 			case "num":
 				return generateSamNUM(litNode.children.get(0));
 			case "string":
@@ -297,11 +302,6 @@ class SamCoder {
 	private String generateSamSTRING(Node stringNode) throws Exception {
 		// System.out.println("start generateSamSTRING");
 		return "PUSHIMMSTR \"" + stringNode.value + "\"\n";
-	}
-
-	private String generateSamIDENT(Node identNode) throws Exception {
-		// System.out.println("start generateSamIDENT");
-		return "";
 	}
 }
 
