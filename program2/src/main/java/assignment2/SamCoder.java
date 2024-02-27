@@ -104,7 +104,7 @@ class SamCoder {
 	}
 
 	private String generateSamSTMT(Node stmtNode) throws Exception {
-		// System.out.println("start generateSamSTMT");
+		// System.out.println("start generateSamSTMT - " + stmtNode.value);
 		String stmtStr = "";
 		switch (stmtNode.value) {
 			case "if":
@@ -130,13 +130,15 @@ class SamCoder {
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(1)));
 				stmtStr = stmtStr.concat(generateSamVAR(stmtNode.children.get(0), false));
 				return stmtStr;
+			case "semicolon":
+				return "";
 			default:
 				throw new Exception();
 		}
 	}
 
 	private String generateSamEXPR(Node exprNode) throws Exception {
-		// System.out.println("start generateSamEXPR");
+		// System.out.println("start generateSamEXPR - " + exprNode.value);
         String exprStr = "";
     	switch (exprNode.value) {
 			case "ternary":
