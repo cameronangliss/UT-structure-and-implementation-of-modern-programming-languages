@@ -9,7 +9,7 @@ public class StrOpCoder {
 
 	public String strCmp() {
 		this.n++;
-		return "// strCmp begin" +
+		return "// strCmp begin\n" +
 			"    LINK\n" +
 			"    PUSHIMM 0\n" +
 			"    STRCMPLOOP" + this.n + ":\n" +
@@ -52,12 +52,12 @@ public class StrOpCoder {
 			"    ADDSP -1\n" +
 			"    UNLINK\n" +
 			"    ADDSP -1\n" +
-			"// strCmp end";
+			"// strCmp end\n";
 	}
 
 	public String strConcat() {
 		this.n++;
-		return "// strConcat begin" +
+		return "// strConcat begin\n" +
 			"    LINK\n" +
 			"    PUSHOFF -2\n" +
 			"    LINK\n" +
@@ -157,12 +157,12 @@ public class StrOpCoder {
 			"    STOREOFF -2\n" +
 			"    UNLINK\n" +
 			"    ADDSP -1\n" +
-			"// strConcat end";
+			"// strConcat end\n";
 	}
 
 	public String strLen() {
 		this.n++;
-		return "// strLen begin" +
+		return "// strLen begin\n" +
 			"    LINK\n" +
 			"    PUSHIMM 0\n" +
 			"    STRLENLOOP" + this.n + ":\n" +
@@ -178,12 +178,12 @@ public class StrOpCoder {
 			"    STRLENDONE" + this.n + ":\n" +
 			"    STOREOFF -1\n" +
 			"    UNLINK\n" +
-			"// strLen end";
+			"// strLen end\n";
 	}
 
 	public String strRepeat() {
 		this.n++;
-		return "// strRepeat begin" +
+		return "// strRepeat begin\n" +
 			"    DUP\n" +
 			"    ISNEG\n" +
 			"    JUMPC STRREPEATHANDLENEGATIVE" + this.n + "\n" +
@@ -267,12 +267,12 @@ public class StrOpCoder {
 			"    ADDSP -4\n" +
 			"    UNLINK\n" +
 			"    ADDSP -1\n" +
-			"// strRepeat end";
+			"// strRepeat end\n";
 	}
 
 	public String strRev() {
 		this.n++;
-		return "// strRev begin" +
+		return "// strRev begin\n" +
 			"    LINK\n" +
 			"    PUSHOFF -1\n" +
 			"    LINK\n" +
@@ -331,6 +331,6 @@ public class StrOpCoder {
 			"    STOREOFF -1\n" +
 			"    ADDSP -3\n" +
 			"    UNLINK\n" +
-			"// strRev end";
+			"// strRev end\n";
 	}
 }
