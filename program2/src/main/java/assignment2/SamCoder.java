@@ -5,17 +5,19 @@ import java.util.List;
 import java.util.Map;
 
 class SamCoder {
-	private int ifCounter;
-	private String currentMethod;
-	private Map<String, Integer> methodParamCounts;
 	private Map<String, Pair<String, Integer>> variables;
+	private int numLocalVars;
+	private Map<String, Integer> methodParamCounts;
+	private String currentMethod;
+	private int ifCounter;
 	private StrOpCoder strOpCoder;
 
 	public SamCoder() {
-		this.ifCounter = 0;
-		this.currentMethod = "";
-		this.methodParamCounts = new HashMap<String, Integer>();
 		this.variables = new HashMap<String, Pair<String, Integer>>();
+		this.numLocalVars = 0;
+		this.methodParamCounts = new HashMap<String, Integer>();
+		this.currentMethod = "";
+		this.ifCounter = 0;
 		this.strOpCoder = new StrOpCoder();
 	}
 
@@ -66,7 +68,7 @@ class SamCoder {
         methodDeclStr = methodDeclStr.concat(this.generateSamBODY(bodyNode));
 		methodDeclStr = methodDeclStr.concat(methodName + "DONE:\n");
 		methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.methodParamCounts.get(methodName) + 1) + "\n");
-		methodDeclStr = methodDeclStr.concat("ADDSP " + -(bodyNode.children.get(0).children.size() - 1) + "\n");
+		methodDeclStr = methodDeclStr.concat("ADDSP " + -this.numLocalVars + "\n");
 		methodDeclStr = methodDeclStr.concat("RST\n\n");
         return methodDeclStr;
     }
@@ -74,6 +76,7 @@ class SamCoder {
     private String generateSamBODY(Node bodyNode) throws Exception {
 		// System.out.println("start generateSamBODY");
         String bodyStr = "";
+		this.numLocalVars = 0;
         for (int i = 0; i < bodyNode.children.size() - 1; i++) {
             bodyStr = bodyStr.concat(this.generateSamVARDECL(bodyNode.children.get(i)));
         }
@@ -85,7 +88,8 @@ class SamCoder {
 		// System.out.println("start generateSamVARDECL");
 		String varDeclStr = "";
 		for (int i = 1; i < varDeclNode.children.size(); i++) {
-			Pair<String, Integer> typeLocPair = new Pair<String, Integer>(varDeclNode.children.get(0).value, i + 1);
+			this.numLocalVars++;
+			Pair<String, Integer> typeLocPair = new Pair<String, Integer>(varDeclNode.children.get(0).value, this.numLocalVars + 1);
 			this.variables.put(varDeclNode.children.get(i).value, typeLocPair);
 		}
 		if (varDeclNode.children.size() > 1) {
@@ -150,7 +154,8 @@ class SamCoder {
 				exprStr = exprStr.concat("JUMP AFTERIF" + currentIfCounter + "\n");
 				exprStr = exprStr.concat("IFTRUE" + currentIfCounter + ":\n");
 				exprStr = exprStr.concat(this.generateSamEXPR(exprNode.children.get(1)));
-				exprStr = exprStr.concat("AFTERIF" + currentIfCounter + "\n");
+				exprStr = exprStr.concat("AFTERIF" + currentIfCounter + ":\n");
+				return exprStr;
 			case "binop":
 				String fstOperandStr = this.generateSamEXPR(exprNode.children.get(0));
 				exprStr = exprStr.concat(fstOperandStr);
