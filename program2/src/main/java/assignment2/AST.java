@@ -647,7 +647,6 @@ public class AST {
                 this.current = prevCurrent;
                 break;
             case WORD:
-                this.current.value = "bool";
                 // true | false
                 this.current.value = this.tokenizer.getWord();
                 break;
@@ -732,18 +731,6 @@ class Node {
         Node newNode = new Node(value, label);
         this.children.add(newNode);
         return newNode;
-    }
-
-    public List<String> getAllDescendantVars() {
-        List<String> vars = new ArrayList<String>();
-        if (this.label == Label.VAR) {
-            vars.add(this.value);
-        } else if (!this.children.isEmpty()) {
-            for (Node child : this.children) {
-                vars.addAll(child.getAllDescendantVars());
-            }
-        }
-        return vars;
     }
 }
 

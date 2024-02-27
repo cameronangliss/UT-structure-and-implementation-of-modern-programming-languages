@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 class SamCoder {
-	private Map<String, Pair<String, Integer>> variables;
+	private Map<String, Pair<String, Integer>> namespace;
 	private int numLocalVars;
 	private Map<String, Integer> methodParamCounts;
 	private String currentMethod;
@@ -13,7 +13,7 @@ class SamCoder {
 	private StrOpCoder strOpCoder;
 
 	public SamCoder() {
-		this.variables = new HashMap<String, Pair<String, Integer>>();
+		this.namespace = new HashMap<String, Pair<String, Integer>>();
 		this.numLocalVars = 0;
 		this.methodParamCounts = new HashMap<String, Integer>();
 		this.currentMethod = "";
@@ -42,8 +42,13 @@ class SamCoder {
 		main.addChild("main", Label.METHOD);
 		prgmStr = prgmStr.concat(this.generateSamEXPR(main));
 		prgmStr = prgmStr.concat("STOP\n\n");
-        for (Node child : prgmNode.children) {
-            prgmStr = prgmStr.concat(this.generateSamMETHODDECL(child));
+		for (Node methodDeclNode : prgmNode.children) {
+			String methodType = methodDeclNode.children.get(0).value;
+			String methodName = methodDeclNode.children.get(1).value;
+			this.namespace.put(methodName, new Pair<String, Integer>(methodType, null));
+		}
+        for (Node methodDeclNode : prgmNode.children) {
+            prgmStr = prgmStr.concat(this.generateSamMETHODDECL(methodDeclNode));
         }
         return prgmStr;
 	}
@@ -61,7 +66,7 @@ class SamCoder {
 				String name = formalTypesAndNames.get(2 * i + 1).value;
 				int loc = i - this.methodParamCounts.get(methodName);
 				Pair<String, Integer> typeLocPair = new Pair<String, Integer>(type, loc);
-				this.variables.put(name, typeLocPair);
+				this.namespace.put(name, typeLocPair);
 			}
 		}
 		Node bodyNode = methodDeclNode.children.get(methodDeclNode.children.size() - 1);
@@ -90,7 +95,7 @@ class SamCoder {
 		for (int i = 1; i < varDeclNode.children.size(); i++) {
 			this.numLocalVars++;
 			Pair<String, Integer> typeLocPair = new Pair<String, Integer>(varDeclNode.children.get(0).value, this.numLocalVars + 1);
-			this.variables.put(varDeclNode.children.get(i).value, typeLocPair);
+			this.namespace.put(varDeclNode.children.get(i).value, typeLocPair);
 		}
 		if (varDeclNode.children.size() > 1) {
 			varDeclStr = varDeclStr.concat("ADDSP " + (varDeclNode.children.size() - 1) + "\n");
@@ -169,17 +174,7 @@ class SamCoder {
 				String fstOperandStr = this.generateSamEXPR(exprNode.children.get(0));
 				exprStr = exprStr.concat(fstOperandStr);
 				exprStr = exprStr.concat(this.generateSamEXPR(exprNode.children.get(2)));
-				if (
-					exprNode
-						.getAllDescendantVars()
-						.stream()
-						.noneMatch(varName -> this.variables
-							.getOrDefault(varName, new Pair<String, Integer>("", 0))
-							.fst()
-							.equals("String")
-						)
-					&& !fstOperandStr.contains("PUSHIMMSTR")
-				) {
+				if (!this.getExprType(exprNode).equals("String")) {
 					exprStr = exprStr.concat(this.generateSamBINOP(exprNode.children.get(1)));
 				} else if (exprNode.children.get(1).value.equals("+")) {
 					exprStr = exprStr.concat(this.strOpCoder.strConcat());
@@ -201,17 +196,7 @@ class SamCoder {
             case "unop":
 				String operandStr = this.generateSamEXPR(exprNode.children.get(1));
 				exprStr = exprStr.concat(operandStr);
-				if (
-					exprNode
-						.getAllDescendantVars()
-						.stream()
-						.noneMatch(varName -> this.variables
-							.getOrDefault(varName, new Pair<String, Integer>("", 0))
-							.fst()
-							.equals("String")
-						)
-					&& !operandStr.contains("PUSHIMMSTR")
-				) {
+				if (!this.getExprType(exprNode).equals("String")) {
 					exprStr = exprStr.concat(this.generateSamUNOP(exprNode.children.get(0)));
 				} else if (exprNode.children.get(0).value.equals("~")) {
 					exprStr = exprStr.concat(this.strOpCoder.strRev());
@@ -242,6 +227,89 @@ class SamCoder {
                 throw new Exception();
         }
 	}
+
+	public String getExprType(Node exprNode) throws Exception {
+        if (exprNode.label != Label.EXPR) {
+            throw new Exception();
+        }
+        switch (exprNode.value) {
+            case "ternary":
+				String fstSubExprType = this.getExprType(exprNode.children.get(0));
+				String sndSubExprType = this.getExprType(exprNode.children.get(1));
+				String thdSubExprType = this.getExprType(exprNode.children.get(1));
+				if (!fstSubExprType.equals("bool") || sndSubExprType.equals(thdSubExprType)) {
+					throw new Exception();
+				}
+				return sndSubExprType;
+            case "binop":
+				fstSubExprType = this.getExprType(exprNode.children.get(0));
+				sndSubExprType = this.getExprType(exprNode.children.get(2));
+				if (fstSubExprType.equals("bool")) {
+					if (!"&|<>=".contains(exprNode.children.get(1).value) || !sndSubExprType.equals("bool")) {
+						throw new Exception();
+					}
+					return "bool";
+				} else if (fstSubExprType.equals("int")) {
+					if ("+-*/%".contains(exprNode.children.get(1).value) && sndSubExprType.equals("int")) {
+						return "int";
+					} else if ("<>=".contains(exprNode.children.get(1).value) && sndSubExprType.equals("int")) {
+						return "bool";
+					} else {
+						throw new Exception();
+					}
+				} else if (fstSubExprType.equals("String")) {
+					if (exprNode.children.get(1).value.equals("+") && sndSubExprType.equals("String")) {
+						return "String";
+					} else if (exprNode.children.get(1).value.equals("*") && sndSubExprType.equals("int")) {
+						return "String";
+					} else if ("<>=".contains(exprNode.children.get(1).value) && sndSubExprType.equals("String")) {
+						return "bool";
+					} else {
+						throw new Exception();
+					}
+				} else {
+					throw new Exception();
+				}
+            case "unop":
+                String subExprType = this.getExprType(exprNode.children.get(1));
+				if (subExprType.equals("bool")) {
+					if (!exprNode.children.get(0).value.equals("!")) {
+						throw new Exception();
+					}
+					return "bool";
+				} else if (subExprType.equals("int")) {
+					if (!exprNode.children.get(0).value.equals("~")) {
+						throw new Exception();
+					}
+					return "int";
+				} else if (subExprType.equals("String")) {
+					if (!exprNode.children.get(0).value.equals("~")) {
+						throw new Exception();
+					}
+					return "String";
+				} else {
+					throw new Exception();
+				}
+            case "paren":
+                return this.getExprType(exprNode.children.get(0));
+            case "method":
+			case "var":
+				return this.namespace.get(exprNode.children.get(0).value).fst();
+			case "lit":
+                String litVal = exprNode.children.get(0).value;
+				if (litVal.equals("num")) {
+					return "int";
+				} else if (litVal.equals("string")) {
+					return "String";
+				} else if (litVal.equals("true") || litVal.equals("false")) {
+					return "bool";
+				} else {
+					throw new Exception();
+				}
+            default:
+                throw new Exception();
+        }
+    }
 
 	private String generateSamBINOP(Node binopNode) throws Exception {
 		// System.out.println("start generateSamBINOP");
@@ -294,7 +362,7 @@ class SamCoder {
 
 	private String generateSamVAR(Node varNode, boolean isReading) throws Exception {
 		// System.out.println("start generateSamVAR");
-		int varLoc = this.variables.get(varNode.value).snd();
+		int varLoc = this.namespace.get(varNode.value).snd();
 		if (isReading) {
 			return "PUSHOFF " + varLoc + "\n";
 		} else {
