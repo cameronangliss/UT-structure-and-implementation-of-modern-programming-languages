@@ -123,7 +123,16 @@ class SamCoder {
 				stmtStr = stmtStr.concat("AFTERIF" + currentIfCounter + ":\n");
 				return stmtStr;
 			case "while":
-				return null;
+				this.ifCounter++;
+				currentIfCounter = this.ifCounter;
+				stmtStr = stmtStr.concat("STARTIF" + currentIfCounter + ":\n");
+				stmtStr = stmtStr.concat(this.generateSamEXPR(stmtNode.children.get(0)));
+				stmtStr = stmtStr.concat("NOT\n");
+				stmtStr = stmtStr.concat("JUMPC AFTERIF" + currentIfCounter + "\n");
+				stmtStr = stmtStr.concat(this.generateSamBLOCK(stmtNode.children.get(1)));
+				stmtStr = stmtStr.concat("JUMP STARTIF" + currentIfCounter + "\n");
+				stmtStr = stmtStr.concat("AFTERIF" + currentIfCounter + ":\n");
+				return stmtStr;
 			case "break":
 				return null;
 			case "return":
