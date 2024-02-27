@@ -89,13 +89,14 @@ class SamCoder {
 		switch (stmtNode.value) {
 			case "if":
 				this.if_counter++;
+				int current_if_counter = this.if_counter;
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(0)));
-				stmtStr = stmtStr.concat("JUMPC IFTRUE" + this.if_counter + "\n");
+				stmtStr = stmtStr.concat("JUMPC IFTRUE" + current_if_counter + "\n");
 				stmtStr = stmtStr.concat(generateSamBLOCK(stmtNode.children.get(2)));
-				stmtStr = stmtStr.concat("JUMP AFTERIF" + this.if_counter + "\n");
-				stmtStr = stmtStr.concat("IFTRUE" + this.if_counter + ":\n");
+				stmtStr = stmtStr.concat("JUMP AFTERIF" + current_if_counter + "\n");
+				stmtStr = stmtStr.concat("IFTRUE" + current_if_counter + ":\n");
 				stmtStr = stmtStr.concat(generateSamBLOCK(stmtNode.children.get(1)));
-				stmtStr = stmtStr.concat("AFTERIF" + this.if_counter + ":\n");
+				stmtStr = stmtStr.concat("AFTERIF" + current_if_counter + ":\n");
 				break;
 			case "while":
 				break;
