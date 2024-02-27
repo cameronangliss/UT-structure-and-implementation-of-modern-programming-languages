@@ -207,7 +207,7 @@ class SamCoder {
 				exprStr = exprStr.concat("JSR " + methodName + "\n");
 				exprStr = exprStr.concat("UNLINK\n");
 				if (exprNode.children.size() == 2) {
-					exprStr = exprStr.concat("ADDSP " + -this.methodParamCounts.get(methodName));
+					exprStr = exprStr.concat("ADDSP " + -this.methodParamCounts.get(methodName) + "\n");
 				}
 				return exprStr;
 			case "var":
@@ -263,7 +263,7 @@ class SamCoder {
 		// System.out.println("start generateSamACTUALS");
         String actualsStr = "";
 		for (Node exprNode : actualsNode.children) {
-			actualsStr.concat(generateSamEXPR(exprNode));
+			actualsStr = actualsStr.concat(generateSamEXPR(exprNode));
 		}
 		return actualsStr;
     }
