@@ -598,7 +598,7 @@ public class AST {
             case WORD:
                 // int | bool | string
                 String type = this.tokenizer.getWord();
-                if (type.equals("int") && type.equals("bool") && type.equals("string")) {
+                if (!type.equals("int") && !type.equals("bool") && !type.equals("String")) {
                     throw new Exception();
                 }
                 this.current.value = type;
@@ -740,6 +740,18 @@ class Node {
         Node newNode = new Node(value, label);
         this.children.add(newNode);
         return newNode;
+    }
+
+    public List<String> getAllDescendantVars() {
+        List<String> vars = new ArrayList<String>();
+        if (this.label == Label.VAR) {
+            vars.add(this.value);
+        } else if (!this.children.isEmpty()) {
+            for (Node child : this.children) {
+                vars.addAll(child.getAllDescendantVars());
+            }
+        }
+        return vars;
     }
 }
 
