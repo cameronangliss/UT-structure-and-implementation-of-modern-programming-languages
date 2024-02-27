@@ -115,13 +115,50 @@ class SamCoder {
 			case "ternary":
 				break;
 			case "binop":
-				exprStr = exprStr.concat(generateSamEXPR(exprNode.children.get(0)));
+				String fstOperandStr = generateSamEXPR(exprNode.children.get(0));
+				exprStr = exprStr.concat(fstOperandStr);
 				exprStr = exprStr.concat(generateSamEXPR(exprNode.children.get(2)));
-				exprStr = exprStr.concat(generateSamBINOP(exprNode.children.get(1)));
-                break;
+				if (
+					exprNode
+						.getAllDescendantVars()
+						.stream()
+						.noneMatch(varName -> this.variables.get(varName).fst().equals("String"))
+					&& !fstOperandStr.contains("PUSHIMMSTR")
+				) {
+					exprStr = exprStr.concat(generateSamBINOP(exprNode.children.get(1)));
+				} else if (exprNode.children.get(1).value.equals("+")) {
+					exprStr.concat(StrOpCoder.strConcat());
+				} else if (exprNode.children.get(1).value.equals("*")) {
+					exprStr.concat(StrOpCoder.strRepeat());
+				} else if (exprNode.children.get(1).value.equals(">")) {
+					exprStr.concat(StrOpCoder.strCmp());
+					exprStr.concat("PUSHIMM -1\nEQUAL\n");
+				} else if (exprNode.children.get(1).value.equals("=")) {
+					exprStr.concat(StrOpCoder.strCmp());
+					exprStr.concat("PUSHIMM 0\nEQUAL\n");
+				} else if (exprNode.children.get(1).value.equals("<")) {
+					exprStr.concat(StrOpCoder.strCmp());
+					exprStr.concat("PUSHIMM 1\nEQUAL\n");
+				} else {
+					throw new Exception();
+				}
+				break;
             case "unop":
-				exprStr = exprStr.concat(generateSamEXPR(exprNode.children.get(1)));
-				exprStr = exprStr.concat(generateSamUNOP(exprNode.children.get(0)));
+				String operandStr = generateSamEXPR(exprNode.children.get(1));
+				exprStr = exprStr.concat(operandStr);
+				if (
+					exprNode
+						.getAllDescendantVars()
+						.stream()
+						.noneMatch(varName -> this.variables.get(varName).fst().equals("String"))
+					&& !operandStr.contains("PUSHIMMSTR")
+				) {
+					exprStr = exprStr.concat(generateSamUNOP(exprNode.children.get(0)));
+				} else if (exprNode.children.get(0).value.equals("~")) {
+					exprStr = exprStr.concat(StrOpCoder.revStr());
+				} else {
+					throw new Exception();
+				}
 				break;
 			case "paren":
 				exprStr = exprStr.concat(generateSamEXPR(exprNode.children.get(0)));
