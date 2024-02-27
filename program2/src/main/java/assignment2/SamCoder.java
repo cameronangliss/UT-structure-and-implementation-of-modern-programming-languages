@@ -174,7 +174,7 @@ class SamCoder {
 				String fstOperandStr = this.generateSamEXPR(exprNode.children.get(0));
 				exprStr = exprStr.concat(fstOperandStr);
 				exprStr = exprStr.concat(this.generateSamEXPR(exprNode.children.get(2)));
-				if (!this.getExprType(exprNode).equals("String")) {
+				if (!this.getExprType(exprNode.children.get(0)).equals("String")) {
 					exprStr = exprStr.concat(this.generateSamBINOP(exprNode.children.get(1)));
 				} else if (exprNode.children.get(1).value.equals("+")) {
 					exprStr = exprStr.concat(this.strOpCoder.strConcat());
@@ -196,7 +196,7 @@ class SamCoder {
             case "unop":
 				String operandStr = this.generateSamEXPR(exprNode.children.get(1));
 				exprStr = exprStr.concat(operandStr);
-				if (!this.getExprType(exprNode).equals("String")) {
+				if (!this.getExprType(exprNode.children.get(1)).equals("String")) {
 					exprStr = exprStr.concat(this.generateSamUNOP(exprNode.children.get(0)));
 				} else if (exprNode.children.get(0).value.equals("~")) {
 					exprStr = exprStr.concat(this.strOpCoder.strRev());
