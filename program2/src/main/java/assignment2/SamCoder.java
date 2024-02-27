@@ -134,7 +134,7 @@ class SamCoder {
 				stmtStr = stmtStr.concat("AFTERIF" + currentIfCounter + ":\n");
 				return stmtStr;
 			case "break":
-				return null;
+				return "JUMP AFTERIF\n";
 			case "return":
 				stmtStr = stmtStr.concat(this.generateSamEXPR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat("JUMP " + this.currentMethod + "DONE\n");
