@@ -10,6 +10,7 @@ class SamCoder {
 	private Map<String, Integer> methodParamCounts;
 	private String currentMethod;
 	private int ifCounter;
+	private int whileCounter;
 	private StrOpCoder strOpCoder;
 
 	public SamCoder() {
@@ -18,6 +19,7 @@ class SamCoder {
 		this.methodParamCounts = new HashMap<String, Integer>();
 		this.currentMethod = "";
 		this.ifCounter = 0;
+		this.whileCounter = 0;
 		this.strOpCoder = new StrOpCoder();
 	}
 
@@ -85,7 +87,7 @@ class SamCoder {
         for (int i = 0; i < bodyNode.children.size() - 1; i++) {
             bodyStr = bodyStr.concat(this.generateSamVARDECL(bodyNode.children.get(i)));
         }
-        bodyStr = bodyStr.concat(this.generateSamBLOCK(bodyNode.children.get(bodyNode.children.size() - 1)));
+        bodyStr = bodyStr.concat(this.generateSamBLOCK(bodyNode.children.get(bodyNode.children.size() - 1), this.whileCounter));
         return bodyStr;
 	}
 
@@ -103,16 +105,16 @@ class SamCoder {
 		return varDeclStr;
 	}
 
-	private String generateSamBLOCK(Node blockNode) throws Exception {
+	private String generateSamBLOCK(Node blockNode, int counter) throws Exception {
 		// System.out.println("start generateSamBLOCK");
 		String blockStr = "";
 		for (Node child : blockNode.children) {
-			blockStr = blockStr.concat(this.generateSamSTMT(child));
+			blockStr = blockStr.concat(this.generateSamSTMT(child, counter));
 		}
 		return blockStr;
 	}
 
-	private String generateSamSTMT(Node stmtNode) throws Exception {
+	private String generateSamSTMT(Node stmtNode, int counter) throws Exception {
 		// System.out.println("start generateSamSTMT - " + stmtNode.value);
 		String stmtStr = "";
 		switch (stmtNode.value) {
@@ -121,25 +123,25 @@ class SamCoder {
 				int currentIfCounter = this.ifCounter;
 				stmtStr = stmtStr.concat(this.generateSamEXPR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat("JUMPC IFTRUE" + currentIfCounter + "\n");
-				stmtStr = stmtStr.concat(this.generateSamBLOCK(stmtNode.children.get(2)));
+				stmtStr = stmtStr.concat(this.generateSamBLOCK(stmtNode.children.get(2), counter));
 				stmtStr = stmtStr.concat("JUMP AFTERIF" + currentIfCounter + "\n");
 				stmtStr = stmtStr.concat("IFTRUE" + currentIfCounter + ":\n");
-				stmtStr = stmtStr.concat(this.generateSamBLOCK(stmtNode.children.get(1)));
+				stmtStr = stmtStr.concat(this.generateSamBLOCK(stmtNode.children.get(1), counter));
 				stmtStr = stmtStr.concat("AFTERIF" + currentIfCounter + ":\n");
 				return stmtStr;
 			case "while":
-				this.ifCounter++;
-				currentIfCounter = this.ifCounter;
-				stmtStr = stmtStr.concat("STARTIF" + currentIfCounter + ":\n");
+				this.whileCounter++;
+				int currentWhileCounter = this.whileCounter;
+				stmtStr = stmtStr.concat("STARTWHILE" + currentWhileCounter + ":\n");
 				stmtStr = stmtStr.concat(this.generateSamEXPR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat("NOT\n");
-				stmtStr = stmtStr.concat("JUMPC AFTERIF" + currentIfCounter + "\n");
-				stmtStr = stmtStr.concat(this.generateSamBLOCK(stmtNode.children.get(1)));
-				stmtStr = stmtStr.concat("JUMP STARTIF" + currentIfCounter + "\n");
-				stmtStr = stmtStr.concat("AFTERIF" + currentIfCounter + ":\n");
+				stmtStr = stmtStr.concat("JUMPC AFTERWHILE" + currentWhileCounter + "\n");
+				stmtStr = stmtStr.concat(this.generateSamBLOCK(stmtNode.children.get(1), currentWhileCounter));
+				stmtStr = stmtStr.concat("JUMP STARTWHILE" + currentWhileCounter + "\n");
+				stmtStr = stmtStr.concat("AFTERWHILE" + currentWhileCounter + ":\n");
 				return stmtStr;
 			case "break":
-				return "JUMP AFTERIF\n";
+				return "JUMP AFTERWHILE" + counter + "\n";
 			case "return":
 				stmtStr = stmtStr.concat(this.generateSamEXPR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat("JUMP " + this.currentMethod + "DONE\n");
