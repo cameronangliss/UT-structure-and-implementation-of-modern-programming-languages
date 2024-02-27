@@ -4,27 +4,41 @@ import java.util.HashMap;
 import java.util.Map;
 
 class SamCoder {
-	private int sp;
-	private int fbr;
-	private int if_counter;
+	private int ifCounter;
+	private String currentMethod;
+	private Map<String, Integer> methodParamCounts;
 	private Map<String, Pair<String, Integer>> variables;
 	private StrOpCoder strOpCoder;
 
 	public SamCoder() {
-		this.sp = 0;
-		this.fbr = 0;
-		this.if_counter = 0;
+		this.ifCounter = 0;
+		this.currentMethod = "";
+		this.methodParamCounts = new HashMap<String, Integer>();
 		this.variables = new HashMap<String, Pair<String, Integer>>();
 		this.strOpCoder = new StrOpCoder();
 	}
 
 	public String generateSamCode(AST ast) throws Exception {
+		for (Node methodDeclNode : ast.root.children) {
+			String methodName = methodDeclNode.children.get(1).value;
+			int numParams;
+			if (methodDeclNode.children.size() == 3) {
+				numParams = 0;
+			} else {
+				numParams = methodDeclNode.children.get(2).children.size() / 2;
+			}
+			this.methodParamCounts.put(methodName, numParams);
+		}
 		return generateSamPRGM(ast.root);
 	}
 
 	private String generateSamPRGM(Node prgmNode) throws Exception {
 		// System.out.println("start generateSamPRGM");
         String prgmStr = "";
+		Node main = new Node("method", Label.EXPR);
+		main.addChild("main", Label.METHOD);
+		prgmStr = prgmStr.concat(this.generateSamEXPR(main));
+		prgmStr = prgmStr.concat("STOP\n");
         for (Node child : prgmNode.children) {
             prgmStr = prgmStr.concat(generateSamMETHODDECL(child));
         }
@@ -36,17 +50,12 @@ class SamCoder {
         String methodDeclStr = "";
 		String methodName = methodDeclNode.children.get(1).value;
         methodDeclStr = methodDeclStr.concat(methodName + ":\n");
-		if (methodName.equals("main")) {
-			methodDeclStr = methodDeclStr.concat("PUSHIMM 0\n");
-			this.sp++;
-			if (methodDeclNode.children.get(2).label == Label.FORMALS) {
-				throw new Exception();
-			}
-		}
-        methodDeclStr = methodDeclStr.concat(generateSamBODY(methodDeclNode.children.get(methodDeclNode.children.size() - 1)));
-		if (methodName.equals("main")) {
-			methodDeclStr = methodDeclStr.concat("STOP\n");
-		}
+		Node bodyNode = methodDeclNode.children.get(methodDeclNode.children.size() - 1);
+        methodDeclStr = methodDeclStr.concat(generateSamBODY(bodyNode));
+		methodDeclStr = methodDeclStr.concat(methodName + "DONE:\n");
+		methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.methodParamCounts.get(methodName) + 1) + "\n");
+		methodDeclStr = methodDeclStr.concat("ADDSP " + -(bodyNode.children.get(0).children.size() - 1) + "\n");
+		methodDeclStr = methodDeclStr.concat("RST\n");
         return methodDeclStr;
     }
 
@@ -64,9 +73,8 @@ class SamCoder {
 		// System.out.println("start generateSamVARDECL");
 		String varDeclStr = "";
 		for (int i = 1; i < varDeclNode.children.size(); i++) {
-			Pair<String, Integer> typeLocPair = new Pair<String, Integer>(varDeclNode.children.get(0).value, this.sp);
+			Pair<String, Integer> typeLocPair = new Pair<String, Integer>(varDeclNode.children.get(0).value, i + 1);
 			this.variables.put(varDeclNode.children.get(i).value, typeLocPair);
-			this.sp++;
 		}
 		if (varDeclNode.children.size() > 1) {
 			varDeclStr = varDeclStr.concat("ADDSP " + (varDeclNode.children.size() - 1) + "\n");
@@ -88,15 +96,15 @@ class SamCoder {
 		String stmtStr = "";
 		switch (stmtNode.value) {
 			case "if":
-				this.if_counter++;
-				int current_if_counter = this.if_counter;
+				this.ifCounter++;
+				int currentIfCounter = this.ifCounter;
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(0)));
-				stmtStr = stmtStr.concat("JUMPC IFTRUE" + current_if_counter + "\n");
+				stmtStr = stmtStr.concat("JUMPC IFTRUE" + currentIfCounter + "\n");
 				stmtStr = stmtStr.concat(generateSamBLOCK(stmtNode.children.get(2)));
-				stmtStr = stmtStr.concat("JUMP AFTERIF" + current_if_counter + "\n");
-				stmtStr = stmtStr.concat("IFTRUE" + current_if_counter + ":\n");
+				stmtStr = stmtStr.concat("JUMP AFTERIF" + currentIfCounter + "\n");
+				stmtStr = stmtStr.concat("IFTRUE" + currentIfCounter + ":\n");
 				stmtStr = stmtStr.concat(generateSamBLOCK(stmtNode.children.get(1)));
-				stmtStr = stmtStr.concat("AFTERIF" + current_if_counter + ":\n");
+				stmtStr = stmtStr.concat("AFTERIF" + currentIfCounter + ":\n");
 				break;
 			case "while":
 				break;
@@ -104,16 +112,13 @@ class SamCoder {
 				break;
 			case "return":
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(0)));
-				stmtStr = stmtStr.concat("STOREOFF " + this.fbr + "\n");
-				this.sp--;
-				stmtStr = stmtStr.concat("ADDSP " + (-this.sp) + "\n");
+				stmtStr = stmtStr.concat("JUMP " + this.currentMethod + "DONE\n");
 				break;
 			case "assign":
 				stmtStr = stmtStr.concat(generateSamVAR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(1)));
 				Pair<String, Integer> typeLocPair = this.variables.get(stmtNode.children.get(0).value);
 				stmtStr = stmtStr.concat("STOREOFF " + typeLocPair.snd() + "\n");
-				this.sp--;
 				break;
 			default:
 				break;
@@ -177,11 +182,20 @@ class SamCoder {
 				exprStr = exprStr.concat(generateSamEXPR(exprNode.children.get(0)));
 				break;
 			case "method":
-				exprStr = exprStr.concat(generateSamACTUALS(exprNode.children.get(1)));
+				String methodName = exprNode.children.get(0).value;
+				this.currentMethod = methodName;
+				exprStr = exprStr.concat("PUSHIMM 0\n");
+				if (exprNode.children.size() == 2) {
+					exprStr = exprStr.concat(generateSamACTUALS(exprNode.children.get(1)));
+				}
 				exprStr = exprStr.concat("LINK\n");
-				exprStr = exprStr.concat("JSR " + exprNode.children.get(0).value + "\n");
+				exprStr = exprStr.concat("JSR " + methodName + "\n");
 				exprStr = exprStr.concat("UNLINK\n");
-				case "var":
+				if (exprNode.children.size() == 2) {
+					exprStr = exprStr.concat("ADDSP " + -this.methodParamCounts.get(methodName));
+				}
+				break;
+			case "var":
 				exprStr = "PUSHOFF " + this.variables.get(exprNode.children.get(0).value).snd() + "\n";
 				break;
 			case "lit":
@@ -235,7 +249,11 @@ class SamCoder {
 
     private String generateSamACTUALS(Node actualsNode) throws Exception {
 		// System.out.println("start generateSamACTUALS");
-        return null;
+        String actualsStr = "";
+		for (Node exprNode : actualsNode.children) {
+			actualsStr.concat(generateSamEXPR(exprNode));
+		}
+		return actualsStr;
     }
 
 	private String generateSamVAR(Node varNode) throws Exception {
@@ -245,7 +263,6 @@ class SamCoder {
 
 	private String generateSamLIT(Node litNode) throws Exception {
 		// System.out.println("start generateSamLIT");
-		this.sp++;
 		switch (litNode.value) {
 			case "bool":
 				if (litNode.value == "true") {
@@ -264,13 +281,11 @@ class SamCoder {
 
 	private String generateSamNUM(Node numNode) throws Exception {
 		// System.out.println("start generateSamNUM");
-		this.sp++;
 		return "PUSHIMM " + numNode.value + "\n";
 	}
 
 	private String generateSamSTRING(Node stringNode) throws Exception {
 		// System.out.println("start generateSamSTRING");
-		this.sp++;
 		return "PUSHIMMSTR \"" + stringNode.value + "\"\n";
 	}
 
