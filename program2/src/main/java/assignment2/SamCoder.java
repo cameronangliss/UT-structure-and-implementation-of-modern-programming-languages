@@ -1,6 +1,7 @@
 package assignment2;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 class SamCoder {
@@ -50,6 +51,16 @@ class SamCoder {
         String methodDeclStr = "";
 		String methodName = methodDeclNode.children.get(1).value;
         methodDeclStr = methodDeclStr.concat(methodName + ":\n");
+		if (methodDeclNode.children.size() == 4) {
+			List<Node> formalTypesAndNames = methodDeclNode.children.get(2).children;
+			for (int i = 0; i < formalTypesAndNames.size(); i++) {
+				String type = formalTypesAndNames.get(2 * i).value;
+				String name = formalTypesAndNames.get(2 * i + 1).value;
+				int loc = i - this.methodParamCounts.get(methodName);
+				Pair<String, Integer> typeLocPair = new Pair<String, Integer>(type, loc);
+				this.variables.put(name, typeLocPair);
+			}
+		}
 		Node bodyNode = methodDeclNode.children.get(methodDeclNode.children.size() - 1);
         methodDeclStr = methodDeclStr.concat(generateSamBODY(bodyNode));
 		methodDeclStr = methodDeclStr.concat(methodName + "DONE:\n");
@@ -105,25 +116,24 @@ class SamCoder {
 				stmtStr = stmtStr.concat("IFTRUE" + currentIfCounter + ":\n");
 				stmtStr = stmtStr.concat(generateSamBLOCK(stmtNode.children.get(1)));
 				stmtStr = stmtStr.concat("AFTERIF" + currentIfCounter + ":\n");
-				break;
+				return stmtStr;
 			case "while":
-				break;
+				return null;
 			case "break":
-				break;
+				return null;
 			case "return":
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat("JUMP " + this.currentMethod + "DONE\n");
-				break;
+				return stmtStr;
 			case "assign":
 				stmtStr = stmtStr.concat(generateSamVAR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat(generateSamEXPR(stmtNode.children.get(1)));
 				Pair<String, Integer> typeLocPair = this.variables.get(stmtNode.children.get(0).value);
 				stmtStr = stmtStr.concat("STOREOFF " + typeLocPair.snd() + "\n");
-				break;
+				return stmtStr;
 			default:
-				break;
+				throw new Exception();
 		}
-		return stmtStr;
 	}
 
 	private String generateSamEXPR(Node exprNode) throws Exception {
@@ -131,7 +141,7 @@ class SamCoder {
         String exprStr = "";
     	switch (exprNode.value) {
 			case "ternary":
-				break;
+				return null;
 			case "binop":
 				String fstOperandStr = generateSamEXPR(exprNode.children.get(0));
 				exprStr = exprStr.concat(fstOperandStr);
@@ -140,7 +150,11 @@ class SamCoder {
 					exprNode
 						.getAllDescendantVars()
 						.stream()
-						.noneMatch(varName -> this.variables.get(varName).fst().equals("String"))
+						.noneMatch(varName -> this.variables
+							.getOrDefault(varName, new Pair<String, Integer>("", 0))
+							.fst()
+							.equals("String")
+						)
 					&& !fstOperandStr.contains("PUSHIMMSTR")
 				) {
 					exprStr = exprStr.concat(generateSamBINOP(exprNode.children.get(1)));
@@ -160,7 +174,7 @@ class SamCoder {
 				} else {
 					throw new Exception();
 				}
-				break;
+				return exprStr;
             case "unop":
 				String operandStr = generateSamEXPR(exprNode.children.get(1));
 				exprStr = exprStr.concat(operandStr);
@@ -177,10 +191,9 @@ class SamCoder {
 				} else {
 					throw new Exception();
 				}
-				break;
+				return exprStr;
 			case "paren":
-				exprStr = exprStr.concat(generateSamEXPR(exprNode.children.get(0)));
-				break;
+				return generateSamEXPR(exprNode.children.get(0));
 			case "method":
 				String methodName = exprNode.children.get(0).value;
 				this.currentMethod = methodName;
@@ -194,17 +207,14 @@ class SamCoder {
 				if (exprNode.children.size() == 2) {
 					exprStr = exprStr.concat("ADDSP " + -this.methodParamCounts.get(methodName));
 				}
-				break;
+				return exprStr;
 			case "var":
-				exprStr = "PUSHOFF " + this.variables.get(exprNode.children.get(0).value).snd() + "\n";
-				break;
+				return "PUSHOFF " + this.variables.get(exprNode.children.get(0).value).snd() + "\n";
 			case "lit":
-				exprStr = exprStr.concat(generateSamLIT(exprNode.children.get(0)));
-				break;
+				return generateSamLIT(exprNode.children.get(0));
             default:
                 throw new Exception();
         }
-        return exprStr;
 	}
 
 	private String generateSamBINOP(Node binopNode) throws Exception {
