@@ -50,6 +50,7 @@ class SamCoder {
 		// System.out.println("start generateSamMETHODDECL");
         String methodDeclStr = "";
 		String methodName = methodDeclNode.children.get(1).value;
+		this.currentMethod = methodName;
         methodDeclStr = methodDeclStr.concat(methodName + ":\n");
 		if (methodDeclNode.children.size() == 4) {
 			List<Node> formalTypesAndNames = methodDeclNode.children.get(2).children;
@@ -198,7 +199,6 @@ class SamCoder {
 				return generateSamEXPR(exprNode.children.get(0));
 			case "method":
 				String methodName = exprNode.children.get(0).value;
-				this.currentMethod = methodName;
 				exprStr = exprStr.concat("PUSHIMM 0\n");
 				if (exprNode.children.size() == 2) {
 					exprStr = exprStr.concat(generateSamACTUALS(exprNode.children.get(1)));
