@@ -137,3 +137,5 @@ dmypy.json
 .nosync
 .DS_stroe
 .DS_Store
+
+output.sam
