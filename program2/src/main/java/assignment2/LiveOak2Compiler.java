@@ -1,11 +1,17 @@
 package assignment2;
 
+import java.io.FileWriter;
 import java.io.IOException;
 
 import edu.utexas.cs.sam.io.SamTokenizer;
 
 public class LiveOak2Compiler {
-	public static void main(String[] args) throws IOException {}
+	public static void main(String[] args) throws IOException {
+        FileWriter writer = new FileWriter(args[1]);
+        String samProgram = LiveOak2Compiler.compiler(args[0]);
+        writer.write(samProgram);
+        writer.close();
+    }
 
 	static String compiler(String fileName) {
 		try {
