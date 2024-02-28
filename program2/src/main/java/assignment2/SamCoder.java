@@ -62,6 +62,9 @@ class SamCoder {
 		this.currentMethod = methodName;
         methodDeclStr = methodDeclStr.concat(methodName + ":\n");
 		if (methodDeclNode.children.size() == 4) {
+			if (methodName.equals("main")) {
+				throw new Exception();
+			}
 			List<Node> formalTypesAndNames = methodDeclNode.children.get(2).children;
 			for (int i = 0; i < formalTypesAndNames.size() / 2; i++) {
 				String type = formalTypesAndNames.get(2 * i).value;
@@ -87,7 +90,11 @@ class SamCoder {
         for (int i = 0; i < bodyNode.children.size() - 1; i++) {
             bodyStr = bodyStr.concat(this.generateSamVARDECL(bodyNode.children.get(i)));
         }
-        bodyStr = bodyStr.concat(this.generateSamBLOCK(bodyNode.children.get(bodyNode.children.size() - 1), this.whileCounter));
+		Node blockNode = bodyNode.children.get(bodyNode.children.size() - 1);
+		if (blockNode.children.stream().noneMatch(stmtNode -> stmtNode.value.equals("return"))) {
+			throw new Exception();
+		}
+        bodyStr = bodyStr.concat(this.generateSamBLOCK(blockNode, this.whileCounter));
         return bodyStr;
 	}
 
@@ -143,6 +150,11 @@ class SamCoder {
 			case "break":
 				return "JUMP AFTERWHILE" + counter + "\n";
 			case "return":
+				// String returnType = this.getExprType(stmtNode.children.get(0));
+				// String methodType = this.namespace.get(this.currentMethod).fst();
+				// if (!returnType.equals(methodType)) {
+				// 	throw new Exception();
+				// }
 				stmtStr = stmtStr.concat(this.generateSamEXPR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat("JUMP " + this.currentMethod + "DONE\n");
 				return stmtStr;
@@ -210,6 +222,20 @@ class SamCoder {
 				return this.generateSamEXPR(exprNode.children.get(0));
 			case "method":
 				String methodName = exprNode.children.get(0).value;
+				int numParams = this.methodParamCounts.get(methodName);
+				if (exprNode.children.size() == 1) {
+					if (numParams > 0) {
+						throw new Exception();
+					}
+				} else {
+					int numArgs = exprNode.children.get(1).children.size();
+					if (numParams != numArgs) {
+						throw new Exception();
+					}
+					for (Node subexprNode : exprNode.children.get(1).children) {
+						// check that params and args have matching types
+					}
+				}
 				exprStr = exprStr.concat("PUSHIMM 0\n");
 				if (exprNode.children.size() == 2) {
 					exprStr = exprStr.concat(this.generateSamACTUALS(exprNode.children.get(1)));
