@@ -1,22 +1,20 @@
 package assignment2;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 class SamCoder {
-	private Map<String, Pair<String, Integer>> namespace;
-	private int numLocalVars;
-	private Map<String, Integer> methodParamCounts;
+	private NameSpace namespace;
+	private Map<String, String> methodToType;
 	private String currentMethod;
 	private int ifCounter;
 	private int whileCounter;
 	private StrOpCoder strOpCoder;
 
 	public SamCoder() {
-		this.namespace = new HashMap<String, Pair<String, Integer>>();
-		this.numLocalVars = 0;
-		this.methodParamCounts = new HashMap<String, Integer>();
+		this.methodToType = new HashMap<String, String>();
 		this.currentMethod = "";
 		this.ifCounter = 0;
 		this.whileCounter = 0;
@@ -24,15 +22,11 @@ class SamCoder {
 	}
 
 	public String generateSamCode(AST ast) throws Exception {
+		this.namespace = new NameSpace(ast);
 		for (Node methodDeclNode : ast.root.children) {
 			String methodName = methodDeclNode.children.get(1).value;
-			int numParams;
-			if (methodDeclNode.children.size() == 3) {
-				numParams = 0;
-			} else {
-				numParams = methodDeclNode.children.get(2).children.size() / 2;
-			}
-			this.methodParamCounts.put(methodName, numParams);
+			String methodType = methodDeclNode.children.get(0).value;
+			this.methodToType.put(methodName, methodType);
 		}
 		return this.generateSamPRGM(ast.root);
 	}
@@ -44,11 +38,6 @@ class SamCoder {
 		main.addChild("main", Label.METHOD);
 		prgmStr = prgmStr.concat(this.generateSamEXPR(main));
 		prgmStr = prgmStr.concat("STOP\n\n");
-		for (Node methodDeclNode : prgmNode.children) {
-			String methodType = methodDeclNode.children.get(0).value;
-			String methodName = methodDeclNode.children.get(1).value;
-			this.namespace.put(methodName, new Pair<String, Integer>(methodType, null));
-		}
         for (Node methodDeclNode : prgmNode.children) {
             prgmStr = prgmStr.concat(this.generateSamMETHODDECL(methodDeclNode));
         }
@@ -61,24 +50,11 @@ class SamCoder {
 		String methodName = methodDeclNode.children.get(1).value;
 		this.currentMethod = methodName;
         methodDeclStr = methodDeclStr.concat(methodName + ":\n");
-		if (methodDeclNode.children.size() == 4) {
-			if (methodName.equals("main")) {
-				throw new Exception();
-			}
-			List<Node> formalTypesAndNames = methodDeclNode.children.get(2).children;
-			for (int i = 0; i < formalTypesAndNames.size() / 2; i++) {
-				String type = formalTypesAndNames.get(2 * i).value;
-				String name = formalTypesAndNames.get(2 * i + 1).value;
-				int loc = i - this.methodParamCounts.get(methodName);
-				Pair<String, Integer> typeLocPair = new Pair<String, Integer>(type, loc);
-				this.namespace.put(name, typeLocPair);
-			}
-		}
 		Node bodyNode = methodDeclNode.children.get(methodDeclNode.children.size() - 1);
         methodDeclStr = methodDeclStr.concat(this.generateSamBODY(bodyNode));
 		methodDeclStr = methodDeclStr.concat(methodName + "DONE:\n");
-		methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.methodParamCounts.get(methodName) + 1) + "\n");
-		methodDeclStr = methodDeclStr.concat("ADDSP " + -this.numLocalVars + "\n");
+		methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.namespace.numParams(methodName) + 1) + "\n");
+		methodDeclStr = methodDeclStr.concat("ADDSP " + -this.namespace.numLocals(methodName) + "\n");
 		methodDeclStr = methodDeclStr.concat("RST\n\n");
         return methodDeclStr;
     }
@@ -86,7 +62,6 @@ class SamCoder {
     private String generateSamBODY(Node bodyNode) throws Exception {
 		// System.out.println("start generateSamBODY");
         String bodyStr = "";
-		this.numLocalVars = 0;
         for (int i = 0; i < bodyNode.children.size() - 1; i++) {
             bodyStr = bodyStr.concat(this.generateSamVARDECL(bodyNode.children.get(i)));
         }
@@ -101,11 +76,6 @@ class SamCoder {
     private String generateSamVARDECL(Node varDeclNode) throws Exception {
 		// System.out.println("start generateSamVARDECL");
 		String varDeclStr = "";
-		for (int i = 1; i < varDeclNode.children.size(); i++) {
-			this.numLocalVars++;
-			Pair<String, Integer> typeLocPair = new Pair<String, Integer>(varDeclNode.children.get(0).value, this.numLocalVars + 1);
-			this.namespace.put(varDeclNode.children.get(i).value, typeLocPair);
-		}
 		if (varDeclNode.children.size() > 1) {
 			varDeclStr = varDeclStr.concat("ADDSP " + (varDeclNode.children.size() - 1) + "\n");
 		}
@@ -151,7 +121,7 @@ class SamCoder {
 				return "JUMP AFTERWHILE" + counter + "\n";
 			case "return":
 				String returnType = this.getExprType(stmtNode.children.get(0));
-				String methodType = this.namespace.get(this.currentMethod).fst();
+				String methodType = this.methodToType.get(this.currentMethod);
 				if (!returnType.equals(methodType)) {
 					throw new Exception();
 				}
@@ -222,7 +192,7 @@ class SamCoder {
 				return this.generateSamEXPR(exprNode.children.get(0));
 			case "method":
 				String methodName = exprNode.children.get(0).value;
-				int numParams = this.methodParamCounts.get(methodName);
+				int numParams = this.namespace.numParams(methodName);
 				if (exprNode.children.size() == 1) {
 					if (numParams > 0) {
 						throw new Exception();
@@ -244,7 +214,7 @@ class SamCoder {
 				exprStr = exprStr.concat("JSR " + methodName + "\n");
 				exprStr = exprStr.concat("UNLINK\n");
 				if (exprNode.children.size() == 2) {
-					exprStr = exprStr.concat("ADDSP " + -this.methodParamCounts.get(methodName) + "\n");
+					exprStr = exprStr.concat("ADDSP " + -numParams + "\n");
 				}
 				return exprStr;
 			case "var":
@@ -321,8 +291,9 @@ class SamCoder {
             case "paren":
                 return this.getExprType(exprNode.children.get(0));
             case "method":
+				return this.methodToType.get(exprNode.children.get(0).value);
 			case "var":
-				return this.namespace.get(exprNode.children.get(0).value).fst();
+				return this.namespace.get(this.currentMethod).get(exprNode.children.get(0).value).fst();
 			case "lit":
                 String litVal = exprNode.children.get(0).value;
 				if (litVal.equals("num")) {
@@ -390,7 +361,7 @@ class SamCoder {
 
 	private String generateSamVAR(Node varNode, boolean isReading) throws Exception {
 		// System.out.println("start generateSamVAR");
-		int varLoc = this.namespace.get(varNode.value).snd();
+		int varLoc = this.namespace.get(this.currentMethod).get(varNode.value).snd();
 		if (isReading) {
 			return "PUSHOFF " + varLoc + "\n";
 		} else {
@@ -422,6 +393,72 @@ class SamCoder {
 	private String generateSamSTRING(Node stringNode) throws Exception {
 		// System.out.println("start generateSamSTRING");
 		return "PUSHIMMSTR \"" + stringNode.value + "\"\n";
+	}
+}
+
+class NameSpace extends HashMap<String, Map<String, Pair<String, Integer>>> {
+	public NameSpace(AST ast) throws Exception {
+		for (Node methodDeclNode : ast.root.children) {
+			Map<String, Pair<String, Integer>> paramVarToInfo = new HashMap<String, Pair<String, Integer>>();
+			String methodName = methodDeclNode.children.get(1).value;
+			// parameters
+			if (methodDeclNode.children.size() == 4) {
+				if (methodName.equals("main")) {
+					throw new Exception();
+				}
+				Node formalsNode = methodDeclNode.children.get(2);
+				int numParams = formalsNode.children.size() / 2;
+				for (int i = 0; i < formalsNode.children.size() / 2; i++) {
+					String paramVarName = formalsNode.children.get(2 * i + 1).value;
+					String paramVarType = formalsNode.children.get(2 * i).value;
+					paramVarToInfo.put(
+						paramVarName,
+						new Pair<String, Integer>(paramVarType, i - numParams)
+					);
+				}
+			}
+			// local variables
+			Node bodyNode = methodDeclNode.children.get(methodDeclNode.children.size() - 1);
+			Map<String, Pair<String, Integer>> localVarToInfo = new HashMap<String, Pair<String, Integer>>();
+			List<Node> varTypeAndNameNodes = new ArrayList<Node>();
+			for (int i = 0; i < bodyNode.children.size() - 1; i++) {
+				Node varDeclNode = bodyNode.children.get(i);
+				for (int j = 1; j < varDeclNode.children.size(); j++) {
+					varTypeAndNameNodes.add(varDeclNode.children.get(0));
+					varTypeAndNameNodes.add(varDeclNode.children.get(j));
+				}
+			}
+			for (int i = 0; i < varTypeAndNameNodes.size() / 2; i++) {
+				String localVarName = varTypeAndNameNodes.get(2 * i + 1).value;
+				String localVarType = varTypeAndNameNodes.get(2 * i).value;
+				localVarToInfo.put(
+					localVarName,
+					new Pair<String, Integer>(localVarType, i + 2)
+				);
+			}
+			paramVarToInfo.putAll(localVarToInfo);
+			this.put(methodName, paramVarToInfo);
+		}
+	}
+
+	public int numParams(String methodName) {
+		int c = 0;
+		for (Pair<String, Integer> pair : this.get(methodName).values()) {
+			if (pair.snd() < 0) {
+				c++;
+			}
+		}
+		return c;
+	}
+
+	public int numLocals(String methodName) {
+		int c = 0;
+		for (Pair<String, Integer> pair : this.get(methodName).values()) {
+			if (pair.snd() > 0) {
+				c++;
+			}
+		}
+		return c;
 	}
 }
 
