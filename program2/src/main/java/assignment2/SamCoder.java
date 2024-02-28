@@ -150,11 +150,11 @@ class SamCoder {
 			case "break":
 				return "JUMP AFTERWHILE" + counter + "\n";
 			case "return":
-				// String returnType = this.getExprType(stmtNode.children.get(0));
-				// String methodType = this.namespace.get(this.currentMethod).fst();
-				// if (!returnType.equals(methodType)) {
-				// 	throw new Exception();
-				// }
+				String returnType = this.getExprType(stmtNode.children.get(0));
+				String methodType = this.namespace.get(this.currentMethod).fst();
+				if (!returnType.equals(methodType)) {
+					throw new Exception();
+				}
 				stmtStr = stmtStr.concat(this.generateSamEXPR(stmtNode.children.get(0)));
 				stmtStr = stmtStr.concat("JUMP " + this.currentMethod + "DONE\n");
 				return stmtStr;
@@ -264,8 +264,8 @@ class SamCoder {
             case "ternary":
 				String fstSubExprType = this.getExprType(exprNode.children.get(0));
 				String sndSubExprType = this.getExprType(exprNode.children.get(1));
-				String thdSubExprType = this.getExprType(exprNode.children.get(1));
-				if (!fstSubExprType.equals("bool") || sndSubExprType.equals(thdSubExprType)) {
+				String thdSubExprType = this.getExprType(exprNode.children.get(2));
+				if (!fstSubExprType.equals("bool") || !sndSubExprType.equals(thdSubExprType)) {
 					throw new Exception();
 				}
 				return sndSubExprType;
