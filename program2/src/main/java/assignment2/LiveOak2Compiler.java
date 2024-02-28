@@ -7,8 +7,8 @@ import edu.utexas.cs.sam.io.SamTokenizer;
 
 public class LiveOak2Compiler {
 	public static void main(String[] args) throws IOException {
-        FileWriter writer = new FileWriter(args[1]);
         String samProgram = LiveOak2Compiler.compiler(args[0]);
+        FileWriter writer = new FileWriter(args[1]);
         writer.write(samProgram);
         writer.close();
     }
