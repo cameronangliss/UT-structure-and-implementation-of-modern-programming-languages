@@ -198,12 +198,18 @@ class SamCoder {
 						throw new Exception();
 					}
 				} else {
-					int numArgs = exprNode.children.get(1).children.size();
-					if (numParams != numArgs) {
+					Node actualsNode = exprNode.children.get(1);
+					if (numParams != actualsNode.children.size()) {
 						throw new Exception();
 					}
-					for (Node subexprNode : exprNode.children.get(1).children) {
-						// check that params and args have matching types
+					for (int i = 0; i < actualsNode.children.size(); i++) {
+						Node subexprNode = actualsNode.children.get(i);
+						String argType = this.getExprType(subexprNode);
+						String paramName = this.namespace.getParamFromIndex(methodName, i);
+						String paramType = this.namespace.get(methodName).get(paramName).fst();
+						if (!argType.equals(paramType)) {
+							throw new Exception();
+						}
 					}
 				}
 				exprStr = exprStr.concat("PUSHIMM 0\n");
@@ -459,6 +465,18 @@ class NameSpace extends HashMap<String, Map<String, Pair<String, Integer>>> {
 			}
 		}
 		return c;
+	}
+
+	public String getParamFromIndex(String methodName, int paramIndex) throws Exception {
+		List<String> varNames = new ArrayList<String>(this.get(methodName).keySet());
+		List<Pair<String, Integer>> varInfos = new ArrayList<Pair<String, Integer>>(this.get(methodName).values());
+		int numParams = this.numParams(methodName);
+		for (int i = 0; i < varNames.size(); i++) {
+			if (varInfos.get(i).snd() == paramIndex - numParams) {
+				return varNames.get(i);
+			}
+		}
+		throw new Exception();
 	}
 }
 
