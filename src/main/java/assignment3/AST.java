@@ -28,12 +28,57 @@ public class AST {
         // System.out.println("start topDownParse");
         switch (this.tokenizer.peekAtKind()) {
             case WORD:
-                // METHODDECL*
+                // CLASSDECL*
+                while (this.tokenizer.peekAtKind() == TokenType.WORD) {
+                    Node classDeclNode = this.current.addChild(null, Label.CLASSDECL);
+                    Node prevCurrent = this.swapOutCurrent(classDeclNode);
+                    this.parseCLASSDECL();
+                    this.current = prevCurrent;
+                }
+                break;
+            case COMMENT:
+                this.tokenizer.skipToken();
+                break;
+            default:
+                throw new Exception();
+        }
+    }
+
+    private void parseCLASSDECL() throws Exception {
+        // System.out.println("start parseCLASSDECL");
+        switch (this.tokenizer.peekAtKind()) {
+            case WORD:
+                // class CLASS (VARDECL*) {METHODDECL*}
+                if (!this.tokenizer.getWord().equals("class")) {
+                    throw new Exception();
+                }
+                Node classNode = this.current.addChild(null, Label.CLASS);
+                Node prevCurrent = this.swapOutCurrent(classNode);
+                this.parseCLASS();
+                this.current = prevCurrent;
+                if (this.tokenizer.getOp() != '(') {
+                    throw new Exception();
+                }
+                while (this.tokenizer.peekAtKind() == TokenType.WORD) {
+                    Node varDeclNode = this.current.addChild(null, Label.VARDECL);
+                    prevCurrent = this.swapOutCurrent(varDeclNode);
+                    this.parseVARDECL();
+                    this.current = prevCurrent;
+                }
+                if (this.tokenizer.getOp() != ')') {
+                    throw new Exception();
+                }
+                if (this.tokenizer.getOp() != '{') {
+                    throw new Exception();
+                }
                 while (this.tokenizer.peekAtKind() == TokenType.WORD) {
                     Node methodDeclNode = this.current.addChild(null, Label.METHODDECL);
-                    Node prevCurrent = this.swapOutCurrent(methodDeclNode);
-                    parseMETHODDECL();
+                    prevCurrent = this.swapOutCurrent(methodDeclNode);
+                    this.parseMETHODDECL();
                     this.current = prevCurrent;
+                }
+                if (this.tokenizer.getOp() != '}') {
+                    throw new Exception();
                 }
                 break;
             case COMMENT:
@@ -418,6 +463,79 @@ public class AST {
                     prevCurrent = this.swapOutCurrent(litNode);
                     this.parseLIT();
                     this.current = prevCurrent;
+                } else if (token.equals("this")) {  // this
+                    this.current.value = "this";
+                    this.tokenizer.skipToken();
+                } else if (token.equals("null")) {  // null
+                    this.current.value = "null";
+                    this.tokenizer.skipToken();
+                } else if (token.equals("new")) {  // new CLASS (ACTUALS?)
+                    this.current.value = "new";
+                    this.tokenizer.skipToken();
+                    // CLASS
+                    Node classNode = this.current.addChild(null, Label.CLASS);
+                    prevCurrent = this.swapOutCurrent(classNode);
+                    this.parseCLASS();
+                    this.current = prevCurrent;
+                    // (ACTUALS?)
+                    if (this.tokenizer.getOp() != '(') {
+                        throw new Exception();
+                    }
+                    if (this.tokenizer.peekAtKind() == TokenType.OPERATOR) {
+                        char op = this.tokenizer.getOp();
+                        this.tokenizer.pushBack();
+                        if (op != ')') {
+                            Node actualsNode = this.current.addChild(null, Label.ACTUALS);
+                            prevCurrent = this.swapOutCurrent(actualsNode);
+                            this.parseACTUALS();
+                            this.current = prevCurrent;
+                        }
+                    } else {
+                        Node actualsNode = this.current.addChild(null, Label.ACTUALS);
+                        prevCurrent = this.swapOutCurrent(actualsNode);
+                        this.parseACTUALS();
+                        this.current = prevCurrent;
+                    }
+                    if (this.tokenizer.getOp() != ')') {
+                        throw new Exception();
+                    }
+                } else if (nextToken == '.') {  // CLASS . METHOD (ACTUALS?)
+                    this.current.value = "dot";
+                    // CLASS
+                    Node classNode = this.current.addChild(null, Label.CLASS);
+                    prevCurrent = this.swapOutCurrent(classNode);
+                    this.parseCLASS();
+                    this.current = prevCurrent;
+                    if (this.tokenizer.getOp() != '.') {
+                        throw new Exception();
+                    }
+                    // METHOD
+                    Node methodNode = this.current.addChild(null, Label.METHOD);
+                    prevCurrent = this.swapOutCurrent(methodNode);
+                    this.parseMETHOD();
+                    this.current = prevCurrent;
+                    // (ACTUALS?)
+                    if (this.tokenizer.getOp() != '(') {
+                        throw new Exception();
+                    }
+                    if (this.tokenizer.peekAtKind() == TokenType.OPERATOR) {
+                        char op = this.tokenizer.getOp();
+                        this.tokenizer.pushBack();
+                        if (op != ')') {
+                            Node actualsNode = this.current.addChild(null, Label.ACTUALS);
+                            prevCurrent = this.swapOutCurrent(actualsNode);
+                            this.parseACTUALS();
+                            this.current = prevCurrent;
+                        }
+                    } else {
+                        Node actualsNode = this.current.addChild(null, Label.ACTUALS);
+                        prevCurrent = this.swapOutCurrent(actualsNode);
+                        this.parseACTUALS();
+                        this.current = prevCurrent;
+                    }
+                    if (this.tokenizer.getOp() != ')') {
+                        throw new Exception();
+                    }
                 } else {  // VAR
                     this.current.value = "var";
                     Node varNode = this.current.addChild(null, Label.VAR);
@@ -588,11 +706,8 @@ public class AST {
         // System.out.println("start parseTYPE");
         switch (this.tokenizer.peekAtKind()) {
             case WORD:
-                // int | bool | string
+                // void | Class | int | bool | string
                 String type = this.tokenizer.getWord();
-                if (!type.equals("int") && !type.equals("bool") && !type.equals("String")) {
-                    throw new Exception();
-                }
                 this.current.value = type;
                 break;
             case COMMENT:
@@ -601,6 +716,18 @@ public class AST {
             default:
                 throw new Exception();
         }
+    }
+
+    private void parseCLASS() throws Exception {
+        // System.out.println("start parseCLASS");
+        String className = this.tokenizer.getWord();
+        this.tokenizer.pushBack();
+        this.current.value = className;
+        // IDENT
+        Node identNode = this.current.addChild(null, Label.IDENT);
+        Node prevCurrent = this.swapOutCurrent(identNode);
+        this.parseIDENT();
+        this.current = prevCurrent;
     }
 
     private void parseMETHOD() throws Exception {
@@ -737,6 +864,7 @@ class Node {
 enum Label {
     PRGM,
     BODY,
+    CLASSDECL,
     METHODDECL,
     VARDECL,
     BLOCK,
@@ -745,6 +873,7 @@ enum Label {
     TYPE,
     IDENT,
     STMT,
+    CLASS,
     METHOD,
     VAR,
     EXPR,
