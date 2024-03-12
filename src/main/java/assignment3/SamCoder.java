@@ -36,11 +36,6 @@ class SamCoder {
 		mainInstDecl.addChild("Main", Label.TYPE);
 		mainInstDecl.addChild(entrypointObjectName, Label.IDENT);
 		this.namespace.put("", new Pair<VarSpace, MethodSpace>(new VarSpace(mainInstDecl, true), new MethodSpace()));
-		Node mainInstAssign = new Node("assign", Label.STMT);
-		mainInstAssign.addChild(entrypointObjectName, Label.VAR);
-		mainInstAssign.addChild("new", Label.EXPR);
-		mainInstAssign.children.get(1).addChild("Main", Label.CLASS);
-		prgmStr = prgmStr.concat(this.generateSamSTMT(mainInstAssign, 0));
 		Node entryPoint = new Node("dot", Label.EXPR);
 		entryPoint.addChild(entrypointObjectName, Label.CLASS);
 		entryPoint.addChild("main", Label.METHOD);
