@@ -160,27 +160,6 @@ public class StrOpCoder {
 			"// strConcat end\n";
 	}
 
-	public String strLen() {
-		this.n++;
-		return "// strLen begin\n" +
-			"    LINK\n" +
-			"    PUSHIMM 0\n" +
-			"    STRLENLOOP" + this.n + ":\n" +
-			"    DUP\n" +
-			"    PUSHOFF -1\n" +
-			"    ADD\n" +
-			"    PUSHIND\n" +
-			"    ISNIL\n" +
-			"    JUMPC STRLENDONE" + this.n + "\n" +
-			"    PUSHIMM 1\n" +
-			"    ADD\n" +
-			"    JUMP STRLENLOOP" + this.n + "\n" +
-			"    STRLENDONE" + this.n + ":\n" +
-			"    STOREOFF -1\n" +
-			"    UNLINK\n" +
-			"// strLen end\n";
-	}
-
 	public String strRepeat() {
 		this.n++;
 		return "// strRepeat begin\n" +
