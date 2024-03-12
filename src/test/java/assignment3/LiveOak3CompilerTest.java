@@ -29,7 +29,7 @@ class LiveOak3CompilerTest {
 
     @AfterEach
     void tearDown() {
-        System.setErr(new PrintStream(new FileOutputStream(FileDescriptor.err)));
+        System.setOut(new PrintStream(new FileOutputStream(FileDescriptor.out)));
     }
 
     void resetStdErr() {
