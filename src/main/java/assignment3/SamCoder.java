@@ -1,11 +1,7 @@
 package assignment3;
 
-import java.util.HashMap;
-import java.util.Map;
-
 class SamCoder {
 	private ClassSpace namespace;
-	private Map<String, Pair<String, Integer>> objectMap;
 	private String currentClass;
 	private String currentMethod;
 	private int ifCounter;
@@ -13,7 +9,6 @@ class SamCoder {
 	private StrOpCoder strOpCoder;
 
 	public SamCoder() {
-		this.objectMap = new HashMap<String, Pair<String, Integer>>();
 		this.currentClass = "";
 		this.currentMethod = "";
 		this.ifCounter = 0;
@@ -34,7 +29,7 @@ class SamCoder {
 		Node mainInstDecl = new Node(null, Label.VARDECL);
 		mainInstDecl.addChild("Main", Label.TYPE);
 		mainInstDecl.addChild(entrypointObjectName, Label.IDENT);
-		this.objectMap.put(entrypointObjectName, new Pair<String, Integer>("Main", 1));
+		this.namespace.put("", new Pair<VarSpace, MethodSpace>(new VarSpace(mainInstDecl, true), new MethodSpace()));
 		Node mainInstAssign = new Node("assign", Label.STMT);
 		mainInstAssign.addChild(entrypointObjectName, Label.VAR);
 		mainInstAssign.addChild("new", Label.EXPR);
@@ -153,16 +148,6 @@ class SamCoder {
 				return stmtStr;
 			case "assign":
 				Node exprNode = stmtNode.children.get(1);
-				if (exprNode.value.equals("new") && !this.currentClass.isBlank()) {
-					String objectName = stmtNode.children.get(0).value;
-					String objectType = exprNode.children.get(0).value;
-					int objectLoc = this.namespace.getVarInfo(this.currentClass, this.currentMethod, objectName).snd();
-					this.objectMap.put(objectName, new Pair<String, Integer>(objectType, objectLoc));
-				} else if (exprNode.value.equals("this")) {
-					String objectName = stmtNode.children.get(0).value;
-					int objectLoc = this.namespace.getVarInfo(this.currentClass, this.currentMethod, objectName).snd();
-					this.objectMap.put(objectName, new Pair<String, Integer>(this.currentClass, objectLoc));
-				}
 				stmtStr = stmtStr.concat(this.generateSamEXPR(exprNode));
 				stmtStr = stmtStr.concat(this.generateSamVAR(stmtNode.children.get(0), false));
 				return stmtStr;
@@ -232,8 +217,8 @@ class SamCoder {
 				return exprStr;
 			case "dot":
 				String objectName = exprNode.children.get(0).value;
+				String objectType = this.namespace.getVarInfo(this.currentClass, this.currentMethod, objectName).fst();
 				String methodName = exprNode.children.get(1).value;
-				String objectType = this.objectMap.get(objectName).fst();
 				int numParams = this.namespace.numParams(objectType, methodName);
 				if (exprNode.children.size() == 2) {
 					if (numParams > 0) {
@@ -378,7 +363,8 @@ class SamCoder {
 			case "new":
 				return exprNode.children.get(0).value;
 			case "dot":
-				String objectType = this.objectMap.get(exprNode.children.get(0).value).fst();
+				String objectName = exprNode.children.get(0).value;
+				String objectType = this.namespace.getVarInfo(this.currentClass, this.currentMethod, objectName).fst();
 				String methodName = exprNode.children.get(1).value;
 				return this.namespace.get(objectType).snd().get(methodName).fst();
             case "method":
@@ -453,12 +439,7 @@ class SamCoder {
 
 	private String generateSamVAR(Node varNode, boolean isReading) throws Exception {
 		// System.out.println("start generateSamVAR");
-		int varLoc;
-		if (this.currentClass.isBlank()) {
-			varLoc = this.objectMap.get(varNode.value).snd();
-		} else {
-			varLoc = this.namespace.getVarInfo(this.currentClass, this.currentMethod, varNode.value).snd();
-		}
+		int varLoc = this.namespace.getVarInfo(this.currentClass, this.currentMethod, varNode.value).snd();
 		if (isReading) {
 			return "PUSHOFF " + varLoc + "\n";
 		} else {

@@ -59,6 +59,9 @@ public class ClassSpace extends HashMap<String, Pair<VarSpace, MethodSpace>> {
 }
 
 class MethodSpace extends HashMap<String, Pair<String, VarSpace>> {
+	// dummy constructor if we just want an empty MethodSpace
+	public MethodSpace() {}
+
 	public MethodSpace(List<Node> methodDeclNodes) throws Exception {
 		for (Node methodDeclNode : methodDeclNodes) {
 			String type = methodDeclNode.children.get(0).value;
@@ -113,6 +116,15 @@ class VarSpace extends HashMap<String, Pair<String, Integer>> {
 				String varName = varDeclNode.children.get(j).value;
 				this.put(varName, new Pair<String, Integer>(varType, counter));
 			}
+		}
+	}
+
+	// hack to differentiate constructor taking methodDeclNode from constructor taking varDeclNode
+	public VarSpace(Node varDeclNode, boolean isVarDeclNode) {
+		String varType = varDeclNode.children.get(0).value;
+		for (int j = 1; j < varDeclNode.children.size(); j++) {
+			String varName = varDeclNode.children.get(j).value;
+			this.put(varName, new Pair<String, Integer>(varType, j));
 		}
 	}
 }
