@@ -73,7 +73,8 @@ class SamCoder {
 		this.currentMethod = methodName;
         methodDeclStr = methodDeclStr.concat(methodName + ":\n");
 		Node bodyNode = methodDeclNode.children.get(methodDeclNode.children.size() - 1);
-        methodDeclStr = methodDeclStr.concat(this.generateSamBODY(bodyNode));
+		String methodType = methodDeclNode.children.get(0).value;
+        methodDeclStr = methodDeclStr.concat(this.generateSamBODY(bodyNode, methodType));
 		methodDeclStr = methodDeclStr.concat(methodName + "DONE:\n");
 		methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.namespace.numParams(this.currentClass, methodName) + 1) + "\n");
 		methodDeclStr = methodDeclStr.concat("ADDSP " + -this.namespace.numLocals(this.currentClass, methodName) + "\n");
@@ -81,14 +82,14 @@ class SamCoder {
         return methodDeclStr;
     }
 
-    private String generateSamBODY(Node bodyNode) throws Exception {
+    private String generateSamBODY(Node bodyNode, String methodType) throws Exception {
 		// System.out.println("start generateSamBODY");
         String bodyStr = "";
         for (int i = 0; i < bodyNode.children.size() - 1; i++) {
             bodyStr = bodyStr.concat(this.generateSamVARDECL(bodyNode.children.get(i)));
         }
 		Node blockNode = bodyNode.children.get(bodyNode.children.size() - 1);
-		if (blockNode.children.stream().noneMatch(stmtNode -> stmtNode.value.equals("return"))) {
+		if (!methodType.equals("void") && blockNode.children.stream().noneMatch(stmtNode -> stmtNode.value.equals("return"))) {
 			throw new Exception();
 		}
         bodyStr = bodyStr.concat(this.generateSamBLOCK(blockNode, this.whileCounter));
@@ -366,11 +367,21 @@ class SamCoder {
 				}
             case "paren":
                 return this.getExprType(exprNode.children.get(0));
+			case "this":
+				return this.currentClass;
+			case "null":
+				return "null";
+			case "new":
+				return exprNode.children.get(0).value;
+			case "dot":
+				String objectType = this.objectMap.get(exprNode.children.get(0).value).fst();
+				String methodName = exprNode.children.get(1).value;
+				return this.namespace.get(objectType).snd().get(methodName).fst();
             case "method":
-				String methodName = exprNode.children.get(0).value;
+				methodName = exprNode.children.get(0).value;
 				return this.namespace.get(this.currentClass).snd().get(methodName).fst();
 			case "var":
-				return this.namespace.get(this.currentMethod).snd().get(exprNode.children.get(0).value).fst();
+				return this.namespace.getVarInfo(this.currentClass, this.currentMethod, exprNode.children.get(0).value).fst();
 			case "lit":
                 String litVal = exprNode.children.get(0).value;
 				if (litVal.equals("num")) {
@@ -442,7 +453,7 @@ class SamCoder {
 		if (this.currentClass.isBlank()) {
 			varLoc = this.objectMap.get(varNode.value).snd();
 		} else {
-			varLoc = this.namespace.get(this.currentClass).snd().get(this.currentMethod).snd().get(varNode.value).snd();
+			varLoc = this.namespace.getVarInfo(this.currentClass, this.currentMethod, varNode.value).snd();
 		}
 		if (isReading) {
 			return "PUSHOFF " + varLoc + "\n";

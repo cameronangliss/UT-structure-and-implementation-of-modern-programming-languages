@@ -17,6 +17,15 @@ public class ClassSpace extends HashMap<String, Pair<VarSpace, MethodSpace>> {
 		}
 	}
 
+	public Pair<String, Integer> getVarInfo(String className, String methodName, String varName) {
+		Pair<String, Integer> varInfo;
+		varInfo = this.get(className).fst().get(varName);
+		if (varInfo == null) {
+			varInfo = this.get(className).snd().get(methodName).snd().get(varName);
+		}
+		return varInfo;
+	}
+
 	public int numParams(String className, String methodName) {
 		int c = 0;
 		for (Pair<String, Integer> pair : this.get(className).snd().get(methodName).snd().values()) {
