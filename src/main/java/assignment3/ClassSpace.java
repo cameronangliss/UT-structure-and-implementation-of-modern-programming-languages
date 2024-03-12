@@ -2,24 +2,24 @@ package assignment3;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
-public class ClassSpace extends HashMap<String, Pair<MethodSpace, Set<String>>> {
+public class ClassSpace extends HashMap<String, Pair<VarSpace, MethodSpace>> {
 	public ClassSpace(AST ast) throws Exception {
 		for (Node classDeclNode : ast.root.children) {
+			List<Node> varDeclNodes = classDeclNode.children.stream().filter(node -> node.label == Label.VARDECL).collect(Collectors.toList());
+			VarSpace varSpace = new VarSpace(varDeclNodes);
 			List<Node> methodDeclNodes = classDeclNode.children.stream().filter(node -> node.label == Label.METHODDECL).collect(Collectors.toList());
-            MethodSpace methodSpace = new MethodSpace(methodDeclNodes);
-			this.put(classDeclNode.value, new Pair<MethodSpace, Set<String>>(methodSpace, new HashSet<String>()));
+			MethodSpace methodSpace = new MethodSpace(methodDeclNodes);
+			this.put(classDeclNode.children.get(0).value, new Pair<VarSpace, MethodSpace>(varSpace, methodSpace));
 		}
 	}
 
 	public int numParams(String className, String methodName) {
 		int c = 0;
-		for (Pair<String, Integer> pair : this.get(className).fst().get(methodName).snd().values()) {
+		for (Pair<String, Integer> pair : this.get(className).snd().get(methodName).snd().values()) {
 			if (pair.snd() < 0) {
 				c++;
 			}
@@ -29,7 +29,7 @@ public class ClassSpace extends HashMap<String, Pair<MethodSpace, Set<String>>> 
 
 	public int numLocals(String className, String methodName) {
 		int c = 0;
-		for (Pair<String, Integer> pair : this.get(className).fst().get(methodName).snd().values()) {
+		for (Pair<String, Integer> pair : this.get(className).snd().get(methodName).snd().values()) {
 			if (pair.snd() > 0) {
 				c++;
 			}
@@ -38,7 +38,7 @@ public class ClassSpace extends HashMap<String, Pair<MethodSpace, Set<String>>> 
 	}
 
 	public String getParamFromIndex(String className, String methodName, int paramIndex) throws Exception {
-        VarSpace varSpace = this.get(className).fst().get(methodName).snd();
+        VarSpace varSpace = this.get(className).snd().get(methodName).snd();
 		int numParams = this.numParams(className, methodName);
 		for (Map.Entry<String, Pair<String, Integer>> varEntry : varSpace.entrySet()) {
 			if (varEntry.getValue().snd() == paramIndex - numParams) {
@@ -55,7 +55,7 @@ class MethodSpace extends HashMap<String, Pair<String, VarSpace>> {
 			String type = methodDeclNode.children.get(0).value;
 			VarSpace varSpace = new VarSpace(methodDeclNode);
 			Pair<String, VarSpace> typeVarSpacePair = new Pair<String, VarSpace>(type, varSpace);
-			this.put(methodDeclNode.value, typeVarSpacePair);
+			this.put(methodDeclNode.children.get(1).value, typeVarSpacePair);
 		}
 	}
 }
@@ -90,6 +90,15 @@ class VarSpace extends HashMap<String, Pair<String, Integer>> {
 			String localVarName = varTypeAndNameNodes.get(2 * i + 1).value;
 			String localVarType = varTypeAndNameNodes.get(2 * i).value;
 			this.put(localVarName, new Pair<String, Integer>(localVarType, i + 2));
+		}
+	}
+
+	public VarSpace(List<Node> varDeclNodes) {
+		// class variables
+		for (int i = 0; i < varDeclNodes.size(); i++) {
+			String varType = varDeclNodes.get(i).children.get(0).value;
+			String varName = varDeclNodes.get(i).children.get(1).value;
+			this.put(varName, new Pair<String, Integer>(varType, i + 1));
 		}
 	}
 }

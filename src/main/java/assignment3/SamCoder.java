@@ -1,7 +1,11 @@
 package assignment3;
 
+import java.util.HashMap;
+import java.util.Map;
+
 class SamCoder {
 	private ClassSpace namespace;
+	private Map<String, Pair<String, Integer>> objectMap;
 	private String currentClass;
 	private String currentMethod;
 	private int ifCounter;
@@ -9,6 +13,7 @@ class SamCoder {
 	private StrOpCoder strOpCoder;
 
 	public SamCoder() {
+		this.objectMap = new HashMap<String, Pair<String, Integer>>();
 		this.currentClass = "";
 		this.currentMethod = "";
 		this.ifCounter = 0;
@@ -25,19 +30,40 @@ class SamCoder {
 		// System.out.println("start generateSamPRGM");
         String prgmStr = "";
 		// adding artificial code to ensure Main.main() is entrypoint
-		Node mainInstDecl = new Node("new", Label.EXPR);
-		mainInstDecl.addChild("main", Label.CLASS);
-		prgmStr = prgmStr.concat(this.generateSamEXPR(mainInstDecl));
+		String entrypointObjectName = "mainObj";
+		Node mainInstDecl = new Node(null, Label.VARDECL);
+		mainInstDecl.addChild("Main", Label.TYPE);
+		mainInstDecl.addChild(entrypointObjectName, Label.IDENT);
+		this.objectMap.put(entrypointObjectName, new Pair<String, Integer>("Main", 1));
+		Node mainInstAssign = new Node("assign", Label.STMT);
+		mainInstAssign.addChild(entrypointObjectName, Label.VAR);
+		mainInstAssign.addChild("new", Label.EXPR);
+		mainInstAssign.children.get(1).addChild("Main", Label.CLASS);
+		prgmStr = prgmStr.concat(this.generateSamSTMT(mainInstAssign, 0));
 		Node entryPoint = new Node("dot", Label.EXPR);
-		entryPoint.addChild("main", Label.CLASS);
+		entryPoint.addChild(entrypointObjectName, Label.CLASS);
 		entryPoint.addChild("main", Label.METHOD);
 		prgmStr = prgmStr.concat(this.generateSamEXPR(entryPoint));
 		prgmStr = prgmStr.concat("STOP\n\n");
 		// generating code from provided program
-        for (Node methodDeclNode : prgmNode.children) {
-            prgmStr = prgmStr.concat(this.generateSamMETHODDECL(methodDeclNode));
+        for (Node classDeclNode : prgmNode.children) {
+            prgmStr = prgmStr.concat(this.generateSamCLASSDECL(classDeclNode));
         }
         return prgmStr;
+	}
+
+	private String generateSamCLASSDECL(Node classDeclNode) throws Exception {
+		// System.out.println("start generateSamCLASSDECL");
+		String classDeclStr = "";
+		this.currentClass = classDeclNode.children.get(0).value;
+		for (int i = 1; i < classDeclNode.children.size(); i++) {
+			if (classDeclNode.children.get(i).label == Label.VARDECL) {
+				classDeclStr = classDeclStr.concat(this.generateSamVARDECL(classDeclNode.children.get(i)));
+			} else {
+				classDeclStr = classDeclStr.concat(this.generateSamMETHODDECL(classDeclNode.children.get(i)));
+			}
+		}
+		return classDeclStr;
 	}
 
     private String generateSamMETHODDECL(Node methodDeclNode) throws Exception {
@@ -117,7 +143,7 @@ class SamCoder {
 				return "JUMP AFTERWHILE" + counter + "\n";
 			case "return":
 				String returnType = this.getExprType(stmtNode.children.get(0));
-				String methodType = this.namespace.get(this.currentClass).fst().get(this.currentMethod).fst();
+				String methodType = this.namespace.get(this.currentClass).snd().get(this.currentMethod).fst();
 				if (!returnType.equals(methodType)) {
 					throw new Exception();
 				}
@@ -125,7 +151,14 @@ class SamCoder {
 				stmtStr = stmtStr.concat("JUMP " + this.currentMethod + "DONE\n");
 				return stmtStr;
 			case "assign":
-				stmtStr = stmtStr.concat(this.generateSamEXPR(stmtNode.children.get(1)));
+				Node exprNode = stmtNode.children.get(1);
+				if (exprNode.value.equals("new") && !this.currentClass.isBlank()) {
+					String objectName = stmtNode.children.get(0).value;
+					String objectType = exprNode.children.get(0).value;
+					int objectLoc = this.namespace.get(this.currentClass).snd().get(this.currentMethod).snd().get(objectName).snd();
+					this.objectMap.put(objectName, new Pair<String, Integer>(objectType, objectLoc));
+				}
+				stmtStr = stmtStr.concat(this.generateSamEXPR(exprNode));
 				stmtStr = stmtStr.concat(this.generateSamVAR(stmtNode.children.get(0), false));
 				return stmtStr;
 			case "semicolon":
@@ -186,9 +219,50 @@ class SamCoder {
 				return exprStr;
 			case "paren":
 				return this.generateSamEXPR(exprNode.children.get(0));
+			case "this":
+				return exprStr;
+			case "null":
+				return exprStr;
+			case "new":
+				return exprStr;
+			case "dot":
+				String objectName = exprNode.children.get(0).value;
+				String methodName = exprNode.children.get(1).value;
+				String objectType = this.objectMap.get(objectName).fst();
+				int numParams = this.namespace.numParams(objectType, methodName);
+				if (exprNode.children.size() == 2) {
+					if (numParams > 0) {
+						throw new Exception();
+					}
+				} else {
+					Node actualsNode = exprNode.children.get(2);
+					if (numParams != actualsNode.children.size()) {
+						throw new Exception();
+					}
+					for (int i = 0; i < actualsNode.children.size(); i++) {
+						Node subexprNode = actualsNode.children.get(i);
+						String argType = this.getExprType(subexprNode);
+						String paramName = this.namespace.getParamFromIndex(objectType, methodName, i);
+						String paramType = this.namespace.get(objectType).snd().get(paramName).fst();
+						if (!argType.equals(paramType)) {
+							throw new Exception();
+						}
+					}
+				}
+				exprStr = exprStr.concat("PUSHIMM 0\n");
+				if (exprNode.children.size() == 3) {
+					exprStr = exprStr.concat(this.generateSamACTUALS(exprNode.children.get(2)));
+				}
+				exprStr = exprStr.concat("LINK\n");
+				exprStr = exprStr.concat("JSR " + methodName + "\n");
+				exprStr = exprStr.concat("UNLINK\n");
+				if (exprNode.children.size() == 3) {
+					exprStr = exprStr.concat("ADDSP " + -numParams + "\n");
+				}
+				return exprStr;
 			case "method":
-				String methodName = exprNode.children.get(0).value;
-				int numParams = this.namespace.numParams("", methodName);
+				methodName = exprNode.children.get(0).value;
+				numParams = this.namespace.numParams("", methodName);
 				if (exprNode.children.size() == 1) {
 					if (numParams > 0) {
 						throw new Exception();
@@ -202,7 +276,7 @@ class SamCoder {
 						Node subexprNode = actualsNode.children.get(i);
 						String argType = this.getExprType(subexprNode);
 						String paramName = this.namespace.getParamFromIndex("", methodName, i);
-						String paramType = this.namespace.get("").fst().get(paramName).fst();
+						String paramType = this.namespace.get("").snd().get(paramName).fst();
 						if (!argType.equals(paramType)) {
 							throw new Exception();
 						}
@@ -294,9 +368,9 @@ class SamCoder {
                 return this.getExprType(exprNode.children.get(0));
             case "method":
 				String methodName = exprNode.children.get(0).value;
-				return this.namespace.get(this.currentClass).fst().get(methodName).fst();
+				return this.namespace.get(this.currentClass).snd().get(methodName).fst();
 			case "var":
-				return this.namespace.get(this.currentMethod).fst().get(exprNode.children.get(0).value).fst();
+				return this.namespace.get(this.currentMethod).snd().get(exprNode.children.get(0).value).fst();
 			case "lit":
                 String litVal = exprNode.children.get(0).value;
 				if (litVal.equals("num")) {
@@ -364,7 +438,12 @@ class SamCoder {
 
 	private String generateSamVAR(Node varNode, boolean isReading) throws Exception {
 		// System.out.println("start generateSamVAR");
-		int varLoc = this.namespace.get(this.currentClass).fst().get(this.currentMethod).snd().get(varNode.value).snd();
+		int varLoc;
+		if (this.currentClass.isBlank()) {
+			varLoc = this.objectMap.get(varNode.value).snd();
+		} else {
+			varLoc = this.namespace.get(this.currentClass).snd().get(this.currentMethod).snd().get(varNode.value).snd();
+		}
 		if (isReading) {
 			return "PUSHOFF " + varLoc + "\n";
 		} else {
