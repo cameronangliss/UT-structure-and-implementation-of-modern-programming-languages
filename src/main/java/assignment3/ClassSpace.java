@@ -104,10 +104,15 @@ class VarSpace extends HashMap<String, Pair<String, Integer>> {
 
 	public VarSpace(List<Node> varDeclNodes) {
 		// class variables
+		int counter = 0;
 		for (int i = 0; i < varDeclNodes.size(); i++) {
-			String varType = varDeclNodes.get(i).children.get(0).value;
-			String varName = varDeclNodes.get(i).children.get(1).value;
-			this.put(varName, new Pair<String, Integer>(varType, i + 1));
+			Node varDeclNode = varDeclNodes.get(i);
+			String varType = varDeclNode.children.get(0).value;
+			for (int j = 1; j < varDeclNode.children.size(); j++) {
+				counter++;
+				String varName = varDeclNode.children.get(j).value;
+				this.put(varName, new Pair<String, Integer>(varType, counter));
+			}
 		}
 	}
 }
