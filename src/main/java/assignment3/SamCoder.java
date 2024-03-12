@@ -1,20 +1,15 @@
 package assignment3;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 class SamCoder {
-	private NameSpace namespace;
-	private Map<String, String> methodToType;
+	private ClassSpace namespace;
+	private String currentClass;
 	private String currentMethod;
 	private int ifCounter;
 	private int whileCounter;
 	private StrOpCoder strOpCoder;
 
 	public SamCoder() {
-		this.methodToType = new HashMap<String, String>();
+		this.currentClass = "";
 		this.currentMethod = "";
 		this.ifCounter = 0;
 		this.whileCounter = 0;
@@ -22,22 +17,23 @@ class SamCoder {
 	}
 
 	public String generateSamCode(AST ast) throws Exception {
-		this.namespace = new NameSpace(ast);
-		for (Node methodDeclNode : ast.root.children) {
-			String methodName = methodDeclNode.children.get(1).value;
-			String methodType = methodDeclNode.children.get(0).value;
-			this.methodToType.put(methodName, methodType);
-		}
+		this.namespace = new ClassSpace(ast);
 		return this.generateSamPRGM(ast.root);
 	}
 
 	private String generateSamPRGM(Node prgmNode) throws Exception {
 		// System.out.println("start generateSamPRGM");
         String prgmStr = "";
-		Node main = new Node("method", Label.EXPR);
-		main.addChild("main", Label.METHOD);
-		prgmStr = prgmStr.concat(this.generateSamEXPR(main));
+		// adding artificial code to ensure Main.main() is entrypoint
+		Node mainInstDecl = new Node("new", Label.EXPR);
+		mainInstDecl.addChild("main", Label.CLASS);
+		prgmStr = prgmStr.concat(this.generateSamEXPR(mainInstDecl));
+		Node entryPoint = new Node("dot", Label.EXPR);
+		entryPoint.addChild("main", Label.CLASS);
+		entryPoint.addChild("main", Label.METHOD);
+		prgmStr = prgmStr.concat(this.generateSamEXPR(entryPoint));
 		prgmStr = prgmStr.concat("STOP\n\n");
+		// generating code from provided program
         for (Node methodDeclNode : prgmNode.children) {
             prgmStr = prgmStr.concat(this.generateSamMETHODDECL(methodDeclNode));
         }
@@ -53,8 +49,8 @@ class SamCoder {
 		Node bodyNode = methodDeclNode.children.get(methodDeclNode.children.size() - 1);
         methodDeclStr = methodDeclStr.concat(this.generateSamBODY(bodyNode));
 		methodDeclStr = methodDeclStr.concat(methodName + "DONE:\n");
-		methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.namespace.numParams(methodName) + 1) + "\n");
-		methodDeclStr = methodDeclStr.concat("ADDSP " + -this.namespace.numLocals(methodName) + "\n");
+		methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.namespace.numParams(this.currentClass, methodName) + 1) + "\n");
+		methodDeclStr = methodDeclStr.concat("ADDSP " + -this.namespace.numLocals(this.currentClass, methodName) + "\n");
 		methodDeclStr = methodDeclStr.concat("RST\n\n");
         return methodDeclStr;
     }
@@ -121,7 +117,7 @@ class SamCoder {
 				return "JUMP AFTERWHILE" + counter + "\n";
 			case "return":
 				String returnType = this.getExprType(stmtNode.children.get(0));
-				String methodType = this.methodToType.get(this.currentMethod);
+				String methodType = this.namespace.get(this.currentClass).fst().get(this.currentMethod).fst();
 				if (!returnType.equals(methodType)) {
 					throw new Exception();
 				}
@@ -192,7 +188,7 @@ class SamCoder {
 				return this.generateSamEXPR(exprNode.children.get(0));
 			case "method":
 				String methodName = exprNode.children.get(0).value;
-				int numParams = this.namespace.numParams(methodName);
+				int numParams = this.namespace.numParams("", methodName);
 				if (exprNode.children.size() == 1) {
 					if (numParams > 0) {
 						throw new Exception();
@@ -205,8 +201,8 @@ class SamCoder {
 					for (int i = 0; i < actualsNode.children.size(); i++) {
 						Node subexprNode = actualsNode.children.get(i);
 						String argType = this.getExprType(subexprNode);
-						String paramName = this.namespace.getParamFromIndex(methodName, i);
-						String paramType = this.namespace.get(methodName).get(paramName).fst();
+						String paramName = this.namespace.getParamFromIndex("", methodName, i);
+						String paramType = this.namespace.get("").fst().get(paramName).fst();
 						if (!argType.equals(paramType)) {
 							throw new Exception();
 						}
@@ -297,9 +293,10 @@ class SamCoder {
             case "paren":
                 return this.getExprType(exprNode.children.get(0));
             case "method":
-				return this.methodToType.get(exprNode.children.get(0).value);
+				String methodName = exprNode.children.get(0).value;
+				return this.namespace.get(this.currentClass).fst().get(methodName).fst();
 			case "var":
-				return this.namespace.get(this.currentMethod).get(exprNode.children.get(0).value).fst();
+				return this.namespace.get(this.currentMethod).fst().get(exprNode.children.get(0).value).fst();
 			case "lit":
                 String litVal = exprNode.children.get(0).value;
 				if (litVal.equals("num")) {
@@ -367,7 +364,7 @@ class SamCoder {
 
 	private String generateSamVAR(Node varNode, boolean isReading) throws Exception {
 		// System.out.println("start generateSamVAR");
-		int varLoc = this.namespace.get(this.currentMethod).get(varNode.value).snd();
+		int varLoc = this.namespace.get(this.currentClass).fst().get(this.currentMethod).snd().get(varNode.value).snd();
 		if (isReading) {
 			return "PUSHOFF " + varLoc + "\n";
 		} else {
@@ -399,105 +396,5 @@ class SamCoder {
 	private String generateSamSTRING(Node stringNode) throws Exception {
 		// System.out.println("start generateSamSTRING");
 		return "PUSHIMMSTR \"" + stringNode.value + "\"\n";
-	}
-}
-
-class NameSpace extends HashMap<String, Map<String, Pair<String, Integer>>> {
-	public NameSpace(AST ast) throws Exception {
-		for (Node methodDeclNode : ast.root.children) {
-			Map<String, Pair<String, Integer>> paramVarToInfo = new HashMap<String, Pair<String, Integer>>();
-			String methodName = methodDeclNode.children.get(1).value;
-			// parameters
-			if (methodDeclNode.children.size() == 4) {
-				if (methodName.equals("main")) {
-					throw new Exception();
-				}
-				Node formalsNode = methodDeclNode.children.get(2);
-				int numParams = formalsNode.children.size() / 2;
-				for (int i = 0; i < formalsNode.children.size() / 2; i++) {
-					String paramVarName = formalsNode.children.get(2 * i + 1).value;
-					String paramVarType = formalsNode.children.get(2 * i).value;
-					paramVarToInfo.put(
-						paramVarName,
-						new Pair<String, Integer>(paramVarType, i - numParams)
-					);
-				}
-			}
-			// local variables
-			Node bodyNode = methodDeclNode.children.get(methodDeclNode.children.size() - 1);
-			Map<String, Pair<String, Integer>> localVarToInfo = new HashMap<String, Pair<String, Integer>>();
-			List<Node> varTypeAndNameNodes = new ArrayList<Node>();
-			for (int i = 0; i < bodyNode.children.size() - 1; i++) {
-				Node varDeclNode = bodyNode.children.get(i);
-				for (int j = 1; j < varDeclNode.children.size(); j++) {
-					varTypeAndNameNodes.add(varDeclNode.children.get(0));
-					varTypeAndNameNodes.add(varDeclNode.children.get(j));
-				}
-			}
-			for (int i = 0; i < varTypeAndNameNodes.size() / 2; i++) {
-				String localVarName = varTypeAndNameNodes.get(2 * i + 1).value;
-				String localVarType = varTypeAndNameNodes.get(2 * i).value;
-				localVarToInfo.put(
-					localVarName,
-					new Pair<String, Integer>(localVarType, i + 2)
-				);
-			}
-			paramVarToInfo.putAll(localVarToInfo);
-			this.put(methodName, paramVarToInfo);
-		}
-	}
-
-	public int numParams(String methodName) {
-		int c = 0;
-		for (Pair<String, Integer> pair : this.get(methodName).values()) {
-			if (pair.snd() < 0) {
-				c++;
-			}
-		}
-		return c;
-	}
-
-	public int numLocals(String methodName) {
-		int c = 0;
-		for (Pair<String, Integer> pair : this.get(methodName).values()) {
-			if (pair.snd() > 0) {
-				c++;
-			}
-		}
-		return c;
-	}
-
-	public String getParamFromIndex(String methodName, int paramIndex) throws Exception {
-		List<String> varNames = new ArrayList<String>(this.get(methodName).keySet());
-		List<Pair<String, Integer>> varInfos = new ArrayList<Pair<String, Integer>>(this.get(methodName).values());
-		int numParams = this.numParams(methodName);
-		for (int i = 0; i < varNames.size(); i++) {
-			if (varInfos.get(i).snd() == paramIndex - numParams) {
-				return varNames.get(i);
-			}
-		}
-		throw new Exception();
-	}
-}
-
-class Pair<T1, T2> {
-	private T1 a;
-	private T2 b;
-
-	public Pair(T1 a, T2 b) {
-		this.a = a;
-		this.b = b;
-	}
-
-	public T1 fst() {
-		return this.a;
-	}
-
-	public T2 snd() {
-		return this.b;
-	}
-
-	public String toString() {
-		return "(" + this.a + ", " + this.b + ")";
 	}
 }
