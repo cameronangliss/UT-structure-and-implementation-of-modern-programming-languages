@@ -156,8 +156,12 @@ class SamCoder {
 				if (exprNode.value.equals("new") && !this.currentClass.isBlank()) {
 					String objectName = stmtNode.children.get(0).value;
 					String objectType = exprNode.children.get(0).value;
-					int objectLoc = this.namespace.get(this.currentClass).snd().get(this.currentMethod).snd().get(objectName).snd();
+					int objectLoc = this.namespace.getVarInfo(this.currentClass, this.currentMethod, objectName).snd();
 					this.objectMap.put(objectName, new Pair<String, Integer>(objectType, objectLoc));
+				} else if (exprNode.value.equals("this")) {
+					String objectName = stmtNode.children.get(0).value;
+					int objectLoc = this.namespace.getVarInfo(this.currentClass, this.currentMethod, objectName).snd();
+					this.objectMap.put(objectName, new Pair<String, Integer>(this.currentClass, objectLoc));
 				}
 				stmtStr = stmtStr.concat(this.generateSamEXPR(exprNode));
 				stmtStr = stmtStr.concat(this.generateSamVAR(stmtNode.children.get(0), false));
@@ -244,7 +248,7 @@ class SamCoder {
 						Node subexprNode = actualsNode.children.get(i);
 						String argType = this.getExprType(subexprNode);
 						String paramName = this.namespace.getParamFromIndex(objectType, methodName, i);
-						String paramType = this.namespace.get(objectType).snd().get(paramName).fst();
+						String paramType = this.namespace.getVarInfo(objectType, methodName, paramName).fst();
 						if (!argType.equals(paramType)) {
 							throw new Exception();
 						}
