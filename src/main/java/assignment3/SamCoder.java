@@ -67,11 +67,11 @@ class SamCoder {
         String methodDeclStr = "";
 		String methodName = methodDeclNode.children.get(1).value;
 		this.currentMethod = methodName;
-        methodDeclStr = methodDeclStr.concat(methodName + ":\n");
+        methodDeclStr = methodDeclStr.concat(this.currentClass + "_" + methodName + ":\n");
 		Node bodyNode = methodDeclNode.children.get(methodDeclNode.children.size() - 1);
 		String methodType = methodDeclNode.children.get(0).value;
         methodDeclStr = methodDeclStr.concat(this.generateSamBODY(bodyNode, methodType));
-		methodDeclStr = methodDeclStr.concat(methodName + "DONE:\n");
+		methodDeclStr = methodDeclStr.concat(this.currentClass + "_" + methodName + "DONE:\n");
 		if (!methodType.equals("void")) {
 			methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.namespace.numParams(this.currentClass, methodName) + 2) + "\n");
 		}
@@ -147,7 +147,7 @@ class SamCoder {
 					throw new Exception();
 				}
 				stmtStr = stmtStr.concat(this.generateSamEXPR(stmtNode.children.get(0)));
-				stmtStr = stmtStr.concat("JUMP " + this.currentMethod + "DONE\n");
+				stmtStr = stmtStr.concat("JUMP " + this.currentClass + "_" + this.currentMethod + "DONE\n");
 				return stmtStr;
 			case "assign":
 				Node exprNode = stmtNode.children.get(1);
@@ -232,7 +232,7 @@ class SamCoder {
 						exprStr = exprStr.concat(this.generateSamACTUALS(exprNode.children.get(1)));
 					}
 					exprStr = exprStr.concat("LINK\n");
-					exprStr = exprStr.concat("JSR " + exprNode.children.get(0).value + "\n");
+					exprStr = exprStr.concat("JSR " + className + "_" + exprNode.children.get(0).value + "\n");
 					exprStr = exprStr.concat("UNLINK\n");
 					if (exprNode.children.size() == 2) {
 						exprStr = exprStr.concat("ADDSP " + -exprNode.children.get(1).children.size() + "\n");
@@ -270,45 +270,12 @@ class SamCoder {
 					exprStr = exprStr.concat(this.generateSamACTUALS(exprNode.children.get(2)));
 				}
 				exprStr = exprStr.concat("LINK\n");
-				exprStr = exprStr.concat("JSR " + methodName + "\n");
+				exprStr = exprStr.concat("JSR " + objectType + "_" + methodName + "\n");
 				exprStr = exprStr.concat("UNLINK\n");
 				if (exprNode.children.size() == 3) {
 					exprStr = exprStr.concat("ADDSP " + -numParams + "\n");
 				}
 				exprStr = exprStr.concat("ADDSP -1\n");
-				return exprStr;
-			case "method":
-				methodName = exprNode.children.get(0).value;
-				numParams = this.namespace.numParams("", methodName);
-				if (exprNode.children.size() == 1) {
-					if (numParams > 0) {
-						throw new Exception();
-					}
-				} else {
-					Node actualsNode = exprNode.children.get(1);
-					if (numParams != actualsNode.children.size()) {
-						throw new Exception();
-					}
-					for (int i = 0; i < actualsNode.children.size(); i++) {
-						Node subexprNode = actualsNode.children.get(i);
-						String argType = this.getExprType(subexprNode);
-						String paramName = this.namespace.getParamFromIndex("", methodName, i);
-						String paramType = this.namespace.get("").snd().get(paramName).fst();
-						if (!argType.equals(paramType)) {
-							throw new Exception();
-						}
-					}
-				}
-				exprStr = exprStr.concat("PUSHIMM 0\n");
-				if (exprNode.children.size() == 2) {
-					exprStr = exprStr.concat(this.generateSamACTUALS(exprNode.children.get(1)));
-				}
-				exprStr = exprStr.concat("LINK\n");
-				exprStr = exprStr.concat("JSR " + methodName + "\n");
-				exprStr = exprStr.concat("UNLINK\n");
-				if (exprNode.children.size() == 2) {
-					exprStr = exprStr.concat("ADDSP " + -numParams + "\n");
-				}
 				return exprStr;
 			case "var":
 				return this.generateSamVAR(exprNode.children.get(0), true);
@@ -394,9 +361,6 @@ class SamCoder {
 				String objectType = this.namespace.getVarInfo(this.currentClass, this.currentMethod, objectName).fst();
 				String methodName = exprNode.children.get(1).value;
 				return this.namespace.get(objectType).snd().get(methodName).fst();
-            case "method":
-				methodName = exprNode.children.get(0).value;
-				return this.namespace.get(this.currentClass).snd().get(methodName).fst();
 			case "var":
 				return this.namespace.getVarInfo(this.currentClass, this.currentMethod, exprNode.children.get(0).value).fst();
 			case "lit":

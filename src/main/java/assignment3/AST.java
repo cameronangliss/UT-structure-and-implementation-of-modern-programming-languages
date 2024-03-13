@@ -428,36 +428,7 @@ public class AST {
                     this.tokenizer.pushBack();
                 }
                 this.tokenizer.pushBack();
-                if (nextToken == '(') {  // METHOD (ACTUALS?)
-                    this.current.value = "method";
-                    // METHOD
-                    Node methodNode = this.current.addChild(null, Label.METHOD);
-                    prevCurrent = this.swapOutCurrent(methodNode);
-                    this.parseMETHOD();
-                    this.current = prevCurrent;
-                    // (ACTUALS?)
-                    if (this.tokenizer.getOp() != '(') {
-                        throw new Exception();
-                    }
-                    if (this.tokenizer.peekAtKind() == TokenType.OPERATOR) {
-                        char op = this.tokenizer.getOp();
-                        this.tokenizer.pushBack();
-                        if (op != ')') {
-                            Node actualsNode = this.current.addChild(null, Label.ACTUALS);
-                            prevCurrent = this.swapOutCurrent(actualsNode);
-                            this.parseACTUALS();
-                            this.current = prevCurrent;
-                        }
-                    } else {
-                        Node actualsNode = this.current.addChild(null, Label.ACTUALS);
-                        prevCurrent = this.swapOutCurrent(actualsNode);
-                        this.parseACTUALS();
-                        this.current = prevCurrent;
-                    }
-                    if (this.tokenizer.getOp() != ')') {
-                        throw new Exception();
-                    }
-                } else if (token.equals("true") || token.equals("false")) {  // LITERAL
+                if (token.equals("true") || token.equals("false")) {  // LITERAL
                     this.current.value = "lit";
                     litNode = this.current.addChild(null, Label.LIT);
                     prevCurrent = this.swapOutCurrent(litNode);
