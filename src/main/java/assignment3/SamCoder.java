@@ -31,7 +31,8 @@ class SamCoder {
 		// System.out.println("start generateSamPRGM");
         String prgmStr = "";
 		// adding artificial code to ensure Main.main() is entrypoint
-		prgmStr = prgmStr.concat("PUSHIMM 0\n");
+		prgmStr = prgmStr.concat("PUSHIMM 1\n");
+		prgmStr = prgmStr.concat("MALLOC\n");
 		prgmStr = prgmStr.concat("PUSHIMM " + this.namespace.get("Main").fst().size() + "\n");
 		prgmStr = prgmStr.concat("MALLOC\n");
 		prgmStr = prgmStr.concat("LINK\n");
@@ -216,8 +217,7 @@ class SamCoder {
 				exprStr = exprStr.concat("PUSHOFF" + -(numParams + 1) + "\n");
 				return exprStr;
 			case "null":
-				exprStr = exprStr.concat("PUSHIMM 0\n");
-				exprStr = exprStr.concat("MALLOC\n");
+				exprStr = exprStr.concat("PUSHABS 0\n");
 				return exprStr;
 			case "new":
 				String className = exprNode.children.get(0).value;
