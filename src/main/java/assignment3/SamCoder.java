@@ -72,7 +72,9 @@ class SamCoder {
 		String methodType = methodDeclNode.children.get(0).value;
         methodDeclStr = methodDeclStr.concat(this.generateSamBODY(bodyNode, methodType));
 		methodDeclStr = methodDeclStr.concat(methodName + "DONE:\n");
-		methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.namespace.numParams(this.currentClass, methodName) + 1) + "\n");
+		if (!methodType.equals("void")) {
+			methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.namespace.numParams(this.currentClass, methodName) + 2) + "\n");
+		}
 		methodDeclStr = methodDeclStr.concat("ADDSP " + -this.namespace.numLocals(this.currentClass, methodName) + "\n");
 		methodDeclStr = methodDeclStr.concat("RST\n\n");
         return methodDeclStr;
@@ -215,10 +217,39 @@ class SamCoder {
 			case "null":
 				return exprStr;
 			case "new":
+				String className = exprNode.children.get(0).value;
+				int bytesRequired = 0;
+				String objectType = exprNode.children.get(0).value;
+				for (Map.Entry<String, Pair<String, Integer>> varEntry : this.namespace.get(objectType).fst().entrySet()) {
+					String objectVarType = varEntry.getValue().fst();
+					if (objectVarType.equals("bool")) {
+						bytesRequired += 1;
+					} else if (objectVarType.equals("int")) {
+						bytesRequired += 1;
+					} else if (objectVarType.equals("String")) {
+						bytesRequired += 1;
+					} else {
+						throw new Exception();
+					}
+				}
+				exprStr = exprStr.concat("PUSHIMM " + bytesRequired + "\n");
+				exprStr = exprStr.concat("MALLOC\n");
+				// if class has constructor, call it
+				if (this.namespace.get(className).snd().keySet().contains(className)) {
+					if (exprNode.children.size() == 2) {
+						exprStr = exprStr.concat(this.generateSamACTUALS(exprNode.children.get(1)));
+					}
+					exprStr = exprStr.concat("LINK\n");
+					exprStr = exprStr.concat("JSR " + exprNode.children.get(0).value + "\n");
+					exprStr = exprStr.concat("UNLINK\n");
+					if (exprNode.children.size() == 2) {
+						exprStr = exprStr.concat("ADDSP " + -exprNode.children.get(1).children.size() + "\n");
+					}
+				}
 				return exprStr;
 			case "dot":
 				String objectName = exprNode.children.get(0).value;
-				String objectType = this.namespace.getVarInfo(this.currentClass, this.currentMethod, objectName).fst();
+				objectType = this.namespace.getVarInfo(this.currentClass, this.currentMethod, objectName).fst();
 				String methodName = exprNode.children.get(1).value;
 				int numParams = this.namespace.numParams(objectType, methodName);
 				if (exprNode.children.size() == 2) {
@@ -241,6 +272,8 @@ class SamCoder {
 					}
 				}
 				exprStr = exprStr.concat("PUSHIMM 0\n");
+				int objectLoc = this.namespace.getVarInfo(this.currentClass, this.currentMethod, exprNode.children.get(0).value).snd();
+				exprStr = exprStr.concat("PUSHOFF " + objectLoc + "\n");
 				if (exprNode.children.size() == 3) {
 					exprStr = exprStr.concat(this.generateSamACTUALS(exprNode.children.get(2)));
 				}
@@ -250,6 +283,7 @@ class SamCoder {
 				if (exprNode.children.size() == 3) {
 					exprStr = exprStr.concat("ADDSP " + -numParams + "\n");
 				}
+				exprStr = exprStr.concat("ADDSP -1\n");
 				return exprStr;
 			case "method":
 				methodName = exprNode.children.get(0).value;
@@ -440,11 +474,26 @@ class SamCoder {
 
 	private String generateSamVAR(Node varNode, boolean isReading) throws Exception {
 		// System.out.println("start generateSamVAR");
-		int varLoc = this.namespace.getVarInfo(this.currentClass, this.currentMethod, varNode.value).snd();
-		if (isReading) {
-			return "PUSHOFF " + varLoc + "\n";
+		boolean isClassVar = this.namespace.get(this.currentClass).fst().keySet().contains(varNode.value);
+		if (isClassVar) {
+			String varStr = "";
+			varStr = varStr.concat("PUSHOFF " + -(this.namespace.numParams(this.currentClass, this.currentMethod) + 1) + "\n");
+			int varOffset = this.namespace.getOffsetOfVar(this.currentClass, varNode.value);
+			varStr = varStr.concat("PUSHIMM " + varOffset + "\n");
+			varStr = varStr.concat("ADD\n");
+			if (isReading) {
+				varStr = varStr.concat("PUSHIND\n");
+			} else {
+				varStr = varStr.concat("SWAP\nSTOREIND\n");
+			}
+			return varStr;
 		} else {
-			return "STOREOFF " + varLoc + "\n";
+			int varLoc = this.namespace.getVarInfo(this.currentClass, this.currentMethod, varNode.value).snd();
+			if (isReading) {
+				return "PUSHOFF " + varLoc + "\n";
+			} else {
+				return "STOREOFF " + varLoc + "\n";
+			}
 		}
 	}
 
@@ -524,6 +573,23 @@ class ClassSpace extends HashMap<String, Pair<VarSpace, MethodSpace>> {
 			}
 		}
 		throw new Exception();
+	}
+
+	public int getOffsetOfVar(String className, String varName) {
+		int offset = 0;
+		for (Map.Entry<String, Pair<String, Integer>> varEntry : this.get(className).fst().entrySet()) {
+			String varType = varEntry.getValue().fst();
+			if (varEntry.getKey().equals(varName)) {
+				break;
+			} if (varType.equals("bool")) {
+				offset += 1;
+			} else if (varType.equals("int")) {
+				offset += 1;
+			} else if (varType.equals("String")) {
+				offset += 1;
+			}
+		}
+		return offset;
 	}
 }
 
