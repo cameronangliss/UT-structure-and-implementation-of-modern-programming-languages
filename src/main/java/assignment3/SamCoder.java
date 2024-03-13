@@ -1,7 +1,7 @@
 package assignment3;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -213,25 +213,17 @@ class SamCoder {
 			case "paren":
 				return this.generateSamEXPR(exprNode.children.get(0));
 			case "this":
+				int numParams = this.namespace.numParams(this.currentClass, this.currentMethod);
+				exprStr = exprStr.concat("PUSHOFF" + -(numParams + 1) + "\n");
 				return exprStr;
 			case "null":
+				exprStr = exprStr.concat("PUSHIMM 0\n");
+				exprStr = exprStr.concat("MALLOC\n");
 				return exprStr;
 			case "new":
 				String className = exprNode.children.get(0).value;
-				int bytesRequired = 0;
 				String objectType = exprNode.children.get(0).value;
-				for (Map.Entry<String, Pair<String, Integer>> varEntry : this.namespace.get(objectType).fst().entrySet()) {
-					String objectVarType = varEntry.getValue().fst();
-					if (objectVarType.equals("bool")) {
-						bytesRequired += 1;
-					} else if (objectVarType.equals("int")) {
-						bytesRequired += 1;
-					} else if (objectVarType.equals("String")) {
-						bytesRequired += 1;
-					} else {
-						throw new Exception();
-					}
-				}
+				int bytesRequired = this.namespace.get(objectType).fst().size();
 				exprStr = exprStr.concat("PUSHIMM " + bytesRequired + "\n");
 				exprStr = exprStr.concat("MALLOC\n");
 				// if class has constructor, call it
@@ -251,7 +243,7 @@ class SamCoder {
 				String objectName = exprNode.children.get(0).value;
 				objectType = this.namespace.getVarInfo(this.currentClass, this.currentMethod, objectName).fst();
 				String methodName = exprNode.children.get(1).value;
-				int numParams = this.namespace.numParams(objectType, methodName);
+				numParams = this.namespace.numParams(objectType, methodName);
 				if (exprNode.children.size() == 2) {
 					if (numParams > 0) {
 						throw new Exception();
@@ -524,7 +516,7 @@ class SamCoder {
 	}
 }
 
-class ClassSpace extends HashMap<String, Pair<VarSpace, MethodSpace>> {
+class ClassSpace extends LinkedHashMap<String, Pair<VarSpace, MethodSpace>> {
 	public ClassSpace(AST ast) throws Exception {
 		for (Node classDeclNode : ast.root.children) {
 			List<Node> varDeclNodes = classDeclNode.children.stream().filter(node -> node.label == Label.VARDECL).collect(Collectors.toList());
@@ -577,23 +569,18 @@ class ClassSpace extends HashMap<String, Pair<VarSpace, MethodSpace>> {
 
 	public int getOffsetOfVar(String className, String varName) {
 		int offset = 0;
-		for (Map.Entry<String, Pair<String, Integer>> varEntry : this.get(className).fst().entrySet()) {
-			String varType = varEntry.getValue().fst();
-			if (varEntry.getKey().equals(varName)) {
+		for (String key : this.get(className).fst().keySet()) {
+			if (key.equals(varName)) {
 				break;
-			} if (varType.equals("bool")) {
-				offset += 1;
-			} else if (varType.equals("int")) {
-				offset += 1;
-			} else if (varType.equals("String")) {
-				offset += 1;
+			} else {
+				offset++;
 			}
 		}
 		return offset;
 	}
 }
 
-class MethodSpace extends HashMap<String, Pair<String, VarSpace>> {
+class MethodSpace extends LinkedHashMap<String, Pair<String, VarSpace>> {
 	// dummy constructor if we just want an empty MethodSpace
 	public MethodSpace() {}
 
@@ -607,7 +594,7 @@ class MethodSpace extends HashMap<String, Pair<String, VarSpace>> {
 	}
 }
 
-class VarSpace extends HashMap<String, Pair<String, Integer>> {
+class VarSpace extends LinkedHashMap<String, Pair<String, Integer>> {
 	public VarSpace(Node methodDeclNode) throws Exception {
 		String methodName = methodDeclNode.children.get(1).value;
 		// parameters
