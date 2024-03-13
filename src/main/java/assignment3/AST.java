@@ -470,12 +470,12 @@ public class AST {
                     if (this.tokenizer.getOp() != ')') {
                         throw new Exception();
                     }
-                } else if (nextToken == '.') {  // CLASS . METHOD (ACTUALS?)
+                } else if (nextToken == '.') {  // VAR . METHOD (ACTUALS?)
                     this.current.value = "dot";
-                    // CLASS
-                    Node classNode = this.current.addChild(null, Label.CLASS);
-                    prevCurrent = this.swapOutCurrent(classNode);
-                    this.parseCLASS();
+                    // VAR
+                    Node varNode = this.current.addChild(null, Label.VAR);
+                    prevCurrent = this.swapOutCurrent(varNode);
+                    this.parseVAR();
                     this.current = prevCurrent;
                     if (this.tokenizer.getOp() != '.') {
                         throw new Exception();

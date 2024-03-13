@@ -31,15 +31,13 @@ class SamCoder {
 		// System.out.println("start generateSamPRGM");
         String prgmStr = "";
 		// adding artificial code to ensure Main.main() is entrypoint
-		String entrypointObjectName = "mainObj";
-		Node mainInstDecl = new Node(null, Label.VARDECL);
-		mainInstDecl.addChild("Main", Label.TYPE);
-		mainInstDecl.addChild(entrypointObjectName, Label.IDENT);
-		this.namespace.put("", new Pair<VarSpace, MethodSpace>(new VarSpace(mainInstDecl, true), new MethodSpace()));
-		Node entryPoint = new Node("dot", Label.EXPR);
-		entryPoint.addChild(entrypointObjectName, Label.CLASS);
-		entryPoint.addChild("main", Label.METHOD);
-		prgmStr = prgmStr.concat(this.generateSamEXPR(entryPoint));
+		prgmStr = prgmStr.concat("PUSHIMM 0\n");
+		prgmStr = prgmStr.concat("PUSHIMM " + this.namespace.get("Main").fst().size() + "\n");
+		prgmStr = prgmStr.concat("MALLOC\n");
+		prgmStr = prgmStr.concat("LINK\n");
+		prgmStr = prgmStr.concat("JSR Main_main\n");
+		prgmStr = prgmStr.concat("UNLINK\n");
+		prgmStr = prgmStr.concat("ADDSP -1\n");
 		prgmStr = prgmStr.concat("STOP\n\n");
 		// generating code from provided program
         for (Node classDeclNode : prgmNode.children) {
@@ -53,9 +51,7 @@ class SamCoder {
 		String classDeclStr = "";
 		this.currentClass = classDeclNode.children.get(0).value;
 		for (int i = 1; i < classDeclNode.children.size(); i++) {
-			if (classDeclNode.children.get(i).label == Label.VARDECL) {
-				classDeclStr = classDeclStr.concat(this.generateSamVARDECL(classDeclNode.children.get(i)));
-			} else {
+			if (classDeclNode.children.get(i).label == Label.METHODDECL) {
 				classDeclStr = classDeclStr.concat(this.generateSamMETHODDECL(classDeclNode.children.get(i)));
 			}
 		}
@@ -75,7 +71,10 @@ class SamCoder {
 		if (!methodType.equals("void")) {
 			methodDeclStr = methodDeclStr.concat("STOREOFF " + -(this.namespace.numParams(this.currentClass, methodName) + 2) + "\n");
 		}
-		methodDeclStr = methodDeclStr.concat("ADDSP " + -this.namespace.numLocals(this.currentClass, methodName) + "\n");
+		int numLocals = this.namespace.numLocals(this.currentClass, methodName);
+		if (numLocals > 0) {
+			methodDeclStr = methodDeclStr.concat("ADDSP " + -numLocals + "\n");
+		}
 		methodDeclStr = methodDeclStr.concat("RST\n\n");
         return methodDeclStr;
     }
@@ -264,8 +263,7 @@ class SamCoder {
 					}
 				}
 				exprStr = exprStr.concat("PUSHIMM 0\n");
-				int objectLoc = this.namespace.getVarInfo(this.currentClass, this.currentMethod, exprNode.children.get(0).value).snd();
-				exprStr = exprStr.concat("PUSHOFF " + objectLoc + "\n");
+				exprStr = exprStr.concat(this.generateSamVAR(exprNode.children.get(0), true));
 				if (exprNode.children.size() == 3) {
 					exprStr = exprStr.concat(this.generateSamACTUALS(exprNode.children.get(2)));
 				}
