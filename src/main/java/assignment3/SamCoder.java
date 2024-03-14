@@ -12,6 +12,7 @@ class SamCoder {
 	private String currentMethod;
 	private int ifCounter;
 	private int whileCounter;
+	private int boolSkipCounter;
 	private StrOpCoder strOpCoder;
 
 	public SamCoder() {
@@ -19,6 +20,7 @@ class SamCoder {
 		this.currentMethod = "";
 		this.ifCounter = 0;
 		this.whileCounter = 0;
+		this.boolSkipCounter = 0;
 		this.strOpCoder = new StrOpCoder();
 	}
 
@@ -179,9 +181,25 @@ class SamCoder {
 			case "binop":
 				String fstOperandStr = this.generateSamEXPR(exprNode.children.get(0));
 				exprStr = exprStr.concat(fstOperandStr);
+				int currentBoolSkipCounter = 0;
+				if (exprNode.children.get(1).value.equals("|")) {
+					this.boolSkipCounter++;
+					currentBoolSkipCounter = this.boolSkipCounter;
+					exprStr = exprStr.concat("DUP\n");
+					exprStr = exprStr.concat("JUMPC BOOLSKIP" + currentBoolSkipCounter + "\n");
+				} else if (exprNode.children.get(1).value.equals("&")) {
+					this.boolSkipCounter++;
+					currentBoolSkipCounter = this.boolSkipCounter;
+					exprStr = exprStr.concat("DUP\n");
+					exprStr = exprStr.concat("NOT\n");
+					exprStr = exprStr.concat("JUMPC BOOLSKIP" + currentBoolSkipCounter + "\n");
+				}
 				exprStr = exprStr.concat(this.generateSamEXPR(exprNode.children.get(2)));
 				if (!this.getExprType(exprNode.children.get(0)).equals("String")) {
 					exprStr = exprStr.concat(this.generateSamBINOP(exprNode.children.get(1)));
+					if ("|&".contains(exprNode.children.get(1).value)) {
+						exprStr = exprStr.concat("BOOLSKIP" + currentBoolSkipCounter + ":\n");
+					}
 				} else if (exprNode.children.get(1).value.equals("+")) {
 					exprStr = exprStr.concat(this.strOpCoder.strConcat());
 				} else if (exprNode.children.get(1).value.equals("*")) {
