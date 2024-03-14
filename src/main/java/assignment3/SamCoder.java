@@ -499,11 +499,15 @@ class SamCoder {
 class ClassSpace extends LinkedHashMap<String, Pair<VarSpace, MethodSpace>> {
 	public ClassSpace(AST ast) throws Exception {
 		for (Node classDeclNode : ast.root.children) {
+			String className = classDeclNode.children.get(0).value;
+			if (this.keySet().contains(className)) {
+				throw new Exception();
+			}
 			List<Node> varDeclNodes = classDeclNode.children.stream().filter(node -> node.label == Label.VARDECL).collect(Collectors.toList());
 			VarSpace varSpace = new VarSpace(varDeclNodes);
 			List<Node> methodDeclNodes = classDeclNode.children.stream().filter(node -> node.label == Label.METHODDECL).collect(Collectors.toList());
 			MethodSpace methodSpace = new MethodSpace(methodDeclNodes);
-			this.put(classDeclNode.children.get(0).value, new Pair<VarSpace, MethodSpace>(varSpace, methodSpace));
+			this.put(className, new Pair<VarSpace, MethodSpace>(varSpace, methodSpace));
 		}
 	}
 
