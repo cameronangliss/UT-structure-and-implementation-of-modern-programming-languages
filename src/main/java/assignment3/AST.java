@@ -794,7 +794,11 @@ public class AST {
             case WORD:
                 // [a-zA-Z]
                 String ident = this.tokenizer.getWord();
-                if (ident.isBlank() || !"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(ident.substring(0, 1))) {
+                if (
+                    ident.isBlank() ||
+                    !"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".contains(ident.substring(0, 1)) ||
+                    List.of("while", "break", "if", "class", "null", "this", "void", "int", "String", "bool", "true", "false", "return", "new").contains(ident)
+                ) {
                     throw new Exception();
                 }
                 // ([a-zA-Z0-9_]*)
